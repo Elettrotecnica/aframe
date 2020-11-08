@@ -338,6 +338,11 @@ module.exports.Component = registerComponent('hand-controls', {
     // Emit event for current gesture now active.
     eventName = getGestureEventName(gesture, true);
     if (eventName) { el.emit(eventName); }
+
+    // Custom: also emit the raw gesture+lastGesture event
+    // (hand-controls supports more gestures than the events it can
+    // emit atm)
+    el.emit('elGesture', {'gesture': gesture, 'lastGesture': lastGesture});
   },
 
   /**
