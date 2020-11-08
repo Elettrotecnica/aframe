@@ -55880,6 +55880,11 @@ module.exports.Component = registerComponent('hand-controls', {
     // Emit event for current gesture now active.
     eventName = getGestureEventName(gesture, true);
     if (eventName) { el.emit(eventName); }
+
+    // Custom: also emit the raw gesture+lastGesture event
+    // (hand-controls supports more gestures than the events it can
+    // emit atm)
+    el.emit('elGesture', {'gesture': gesture, 'lastGesture': lastGesture});
   },
 
   /**
@@ -59704,7 +59709,6 @@ module.exports.Component = registerComponent('remote-hand-controls', {
   },
 
   init: function () {
-    var self = this;
     var el = this.el;
     // Current pose.
     this.gesture = this.data.gesture;
@@ -59726,9 +59730,10 @@ module.exports.Component = registerComponent('remote-hand-controls', {
    * Update handler. Does the init stuff and most importantly, tracks
    * changes in the gesture property.
    */
-  update: function (previousHand) {
+  update: function (oldData) {
     var el = this.el;
     var hand = this.data.hand;
+    var previousHand = oldData.hand;
     var handModelStyle = this.data.handModelStyle;
     var handColor = this.data.color;
     var gesture = this.data.gesture;
@@ -69591,7 +69596,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.0.4 (Date 2020-11-07, Commit #d7fcca74)');
+console.log('A-Frame Version: 1.0.4 (Date 2020-11-08, Commit #b8240ce6)');
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
