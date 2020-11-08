@@ -71,9 +71,10 @@ module.exports.Component = registerComponent('remote-hand-controls', {
    * Update handler. Does the init stuff and most importantly, tracks
    * changes in the gesture property.
    */
-  update: function (previousHand) {
+  update: function (oldData) {
     var el = this.el;
     var hand = this.data.hand;
+    var previousHand = oldData.hand;
     var handModelStyle = this.data.handModelStyle;
     var handColor = this.data.color;
     var gesture = this.data.gesture;
