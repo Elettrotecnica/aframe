@@ -59935,7 +59935,21 @@ var DIALOG_OK_BUTTON_CLASS = 'a-dialog-ok-button';
  * UI for enabling device motion permission
  */
 module.exports.Component = registerComponent('device-orientation-permission-ui', {
-  schema: {enabled: {default: true}},
+  schema: {
+    enabled: {default: true},
+    deviceMotionMessage: {
+      default: 'This immersive website requires access to your device motion sensors.'
+    },
+    mobileDestkopMessage: {
+      default: 'Set your browser to request the mobile version of the site and reload the page to enjoy immersive mode.'
+    },
+    httpsMessage: {
+      default: 'Access this site over HTTPS to enter VR mode and grant access to the device sensors.'
+    },
+    denyButtonText: {default: 'Deny'},
+    allowButtonText: {default: 'Allow'},
+    cancelButtonText: {default: 'Cancel'}
+  },
 
   init: function () {
     var self = this;
@@ -59965,7 +59979,9 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
     // Show dialog only if permission has not yet been granted.
     DeviceOrientationEvent.requestPermission().catch(function () {
       self.devicePermissionDialogEl = createPermissionDialog(
-        'This immersive website requires access to your device motion sensors.',
+        self.data.denyButtonText,
+        self.data.allowButtonText,
+        self.data.deviceMotionMessage,
         self.onDeviceMotionDialogAllowClicked,
         self.onDeviceMotionDialogDenyClicked);
       self.el.appendChild(self.devicePermissionDialogEl);
@@ -59987,7 +60003,8 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
   showMobileDesktopModeAlert: function () {
     var self = this;
     var safariIpadAlertEl = createAlertDialog(
-      'Set your browser to request the mobile version of the site and reload the page to enjoy immersive mode.',
+      self.data.cancelButtonText,
+      self.data.mobileDestkopMessage,
       function () { self.el.removeChild(safariIpadAlertEl); });
     this.el.appendChild(safariIpadAlertEl);
   },
@@ -59995,7 +60012,8 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
   showHTTPAlert: function () {
     var self = this;
     var httpAlertEl = createAlertDialog(
-      'Access this site over HTTPS to enter VR mode and grant access to the device sensors.',
+      self.data.cancelButtonText,
+      self.data.httpsMessage,
       function () { self.el.removeChild(httpAlertEl); });
     this.el.appendChild(httpAlertEl);
   },
@@ -60022,9 +60040,12 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
  * Create a modal dialog that request users permission to access the Device Motion API.
  *
  * @param {function} onAllowClicked - click event handler
+ * @param {function} onDenyClicked - click event handler
+ *
  * @returns {Element} Wrapper <div>.
  */
-function createPermissionDialog (text, onAllowClicked, onDenyClicked) {
+function createPermissionDialog (
+  denyText, allowText, dialogText, onAllowClicked, onDenyClicked) {
   var buttonsContainer;
   var denyButton;
   var acceptButton;
@@ -60036,13 +60057,13 @@ function createPermissionDialog (text, onAllowClicked, onDenyClicked) {
   denyButton = document.createElement('button');
   denyButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_DENY_BUTTON_CLASS);
   denyButton.setAttribute(constants.AFRAME_INJECTED, '');
-  denyButton.innerHTML = 'Deny';
+  denyButton.innerHTML = denyText;
   buttonsContainer.appendChild(denyButton);
 
   acceptButton = document.createElement('button');
   acceptButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_ALLOW_BUTTON_CLASS);
   acceptButton.setAttribute(constants.AFRAME_INJECTED, '');
-  acceptButton.innerHTML = 'Allow';
+  acceptButton.innerHTML = allowText;
   buttonsContainer.appendChild(acceptButton);
 
   // Ask for sensor events to be used
@@ -60056,10 +60077,10 @@ function createPermissionDialog (text, onAllowClicked, onDenyClicked) {
     onDenyClicked();
   });
 
-  return createDialog(text, buttonsContainer);
+  return createDialog(dialogText, buttonsContainer);
 }
 
-function createAlertDialog (text, onOkClicked) {
+function createAlertDialog (closeText, dialogText, onOkClicked) {
   var buttonsContainer;
   var okButton;
 
@@ -60070,7 +60091,7 @@ function createAlertDialog (text, onOkClicked) {
   okButton = document.createElement('button');
   okButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_OK_BUTTON_CLASS);
   okButton.setAttribute(constants.AFRAME_INJECTED, '');
-  okButton.innerHTML = 'Close';
+  okButton.innerHTML = closeText;
   buttonsContainer.appendChild(okButton);
 
   // Ask for sensor events to be used
@@ -60079,7 +60100,7 @@ function createAlertDialog (text, onOkClicked) {
     onOkClicked();
   });
 
-  return createDialog(text, buttonsContainer);
+  return createDialog(dialogText, buttonsContainer);
 }
 
 function createDialog (text, buttonsContainerEl) {
@@ -62513,24 +62534,39 @@ var checkControllerPresentAndSetup = trackedControlsUtils.checkControllerPresent
 var emitIfAxesChanged = trackedControlsUtils.emitIfAxesChanged;
 var onButtonEvent = trackedControlsUtils.onButtonEvent;
 
-var INDEX_CONTROLLER_MODEL_BASE_URL = 'https://cdn.aframe.io/controllers/valve/index/valve_index_';
+var INDEX_CONTROLLER_MODEL_BASE_URL = 'https://cdn.aframe.io/controllers/valve/index/valve-index-';
 var INDEX_CONTROLLER_MODEL_URL = {
-  left: INDEX_CONTROLLER_MODEL_BASE_URL + 'left.gltf',
-  right: INDEX_CONTROLLER_MODEL_BASE_URL + 'right.gltf'
+  left: INDEX_CONTROLLER_MODEL_BASE_URL + 'left.glb',
+  right: INDEX_CONTROLLER_MODEL_BASE_URL + 'right.glb'
 };
 
 var GAMEPAD_ID_PREFIX = 'valve';
 
-var INDEX_CONTROLLER_POSITION_OFFSET = {
+var isWebXRAvailable = _dereq_('../utils/').device.isWebXRAvailable;
+
+var INDEX_CONTROLLER_POSITION_OFFSET_WEBVR = {
   left: {x: -0.00023692678902063457, y: 0.04724540367838371, z: -0.061959880395271096},
   right: {x: 0.002471558599671131, y: 0.055765208987076195, z: -0.061068168708348844}
 };
 
-var INDEX_CONTROLLER_ROTATION_OFFSET = {
+var INDEX_CONTROLLER_POSITION_OFFSET_WEBXR = {
+  left: {x: 0, y: -0.05, z: 0.06},
+  right: {x: 0, y: -0.05, z: 0.06}
+};
+
+var INDEX_CONTROLLER_ROTATION_OFFSET_WEBVR = {
   left: {_x: 0.692295102620542, _y: -0.0627618864318427, _z: -0.06265893149611756, _order: 'XYZ'},
   right: {_x: 0.6484021229942998, _y: -0.032563619881892894, _z: -0.1327973171917482, _order: 'XYZ'}
 };
 
+var INDEX_CONTROLLER_ROTATION_OFFSET_WEBXR = {
+  left: {_x: Math.PI / 3, _y: 0, _z: 0, _order: 'XYZ'},
+  right: {_x: Math.PI / 3, _y: 0, _z: 0, _order: 'XYZ'}
+};
+
+var INDEX_CONTROLLER_ROTATION_OFFSET = isWebXRAvailable ? INDEX_CONTROLLER_ROTATION_OFFSET_WEBXR : INDEX_CONTROLLER_ROTATION_OFFSET_WEBVR;
+
+var INDEX_CONTROLLER_POSITION_OFFSET = isWebXRAvailable ? INDEX_CONTROLLER_POSITION_OFFSET_WEBXR : INDEX_CONTROLLER_POSITION_OFFSET_WEBVR;
 /**
  * Vive controls.
  * Interface with Vive controllers and map Gamepad events to controller buttons:
@@ -62671,7 +62707,7 @@ module.exports.Component = registerComponent('valve-index-controls', {
       analogValue = evt.detail.state.value;
       // Update trigger rotation depending on button value.
       if (buttonMeshes && buttonMeshes.trigger) {
-        buttonMeshes.trigger.rotation.x = -analogValue * (Math.PI / 12);
+        buttonMeshes.trigger.rotation.x = this.triggerOriginalRotationX - analogValue * (Math.PI / 40);
       }
     }
 
@@ -62696,6 +62732,7 @@ module.exports.Component = registerComponent('valve-index-controls', {
     buttonMeshes.system = controllerObject3D.getObjectByName('systembutton');
     buttonMeshes.trackpad = controllerObject3D.getObjectByName('touchpad');
     buttonMeshes.trigger = controllerObject3D.getObjectByName('trigger');
+    this.triggerOriginalRotationX = buttonMeshes.trigger.rotation.x;
 
     // Set default colors.
     Object.keys(buttonMeshes).forEach(function (buttonName) {
@@ -62736,7 +62773,7 @@ module.exports.Component = registerComponent('valve-index-controls', {
   }
 });
 
-},{"../core/component":110,"../lib/three":158,"../utils/bind":178,"../utils/tracked-controls":193}],97:[function(_dereq_,module,exports){
+},{"../core/component":110,"../lib/three":158,"../utils/":184,"../utils/bind":178,"../utils/tracked-controls":193}],97:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 /**
@@ -69596,7 +69633,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.0.4 (Date 2020-11-08, Commit #b8240ce6)');
+console.log('A-Frame Version: 1.0.4 (Date 2020-11-12, Commit #cbdc0ca3)');
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
