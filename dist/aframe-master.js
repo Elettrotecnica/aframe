@@ -57637,7 +57637,8 @@ module.exports.Component = registerComponent('look-controls', {
     pointerLockEnabled: {default: false},
     reverseMouseDrag: {default: false},
     reverseTouchDrag: {default: false},
-    touchEnabled: {default: true}
+    touchEnabled: {default: true},
+    mouseEnabled: {default: true}
   },
 
   init: function () {
@@ -57918,7 +57919,7 @@ module.exports.Component = registerComponent('look-controls', {
    */
   onMouseDown: function (evt) {
     var sceneEl = this.el.sceneEl;
-    if (!this.data.enabled || (sceneEl.is('vr-mode') && sceneEl.checkHeadsetConnected())) { return; }
+    if (!this.data.enabled || !this.data.mouseEnabled || (sceneEl.is('vr-mode') && sceneEl.checkHeadsetConnected())) { return; }
     // Handle only primary button.
     if (evt.button !== 0) { return; }
 
@@ -69633,7 +69634,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.0.4 (Date 2020-11-12, Commit #cbdc0ca3)');
+console.log('A-Frame Version: 1.0.4 (Date 2020-11-13, Commit #3ba366f4)');
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
