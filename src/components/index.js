@@ -8,7 +8,6 @@ require('./generic-tracked-controller-controls');
 require('./gltf-model');
 require('./hand-tracking-controls');
 require('./hand-controls');
-require('./remote-hand-controls');
 require('./layer');
 require('./laser-controls');
 require('./light');
@@ -48,3 +47,7 @@ require('./scene/pool');
 require('./scene/screenshot');
 require('./scene/stats');
 require('./scene/vr-mode-ui');
+
+/** Downstream Components */
+require('./mediastream-sound');
+require('./remote-hand-controls');
