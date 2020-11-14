@@ -51,3 +51,4 @@ require('./scene/vr-mode-ui');
 /** Downstream Components */
 require('./mediastream-sound');
 require('./remote-hand-controls');
+require('./teleport-controls');
