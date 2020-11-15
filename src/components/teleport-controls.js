@@ -145,13 +145,13 @@ function createDefaultPlane (size) {
 /**
  * Polyfill for the matches api on elements
  */
-if (!Element.prototype.matches) {
-  Element.prototype.matches =
-    Element.prototype.matchesSelector ||
-    Element.prototype.mozMatchesSelector ||
-    Element.prototype.msMatchesSelector ||
-    Element.prototype.oMatchesSelector ||
-    Element.prototype.webkitMatchesSelector ||
+if (!window.Element.prototype.matches) {
+  window.Element.prototype.matches =
+    window.Element.prototype.matchesSelector ||
+    window.Element.prototype.mozMatchesSelector ||
+    window.Element.prototype.msMatchesSelector ||
+    window.Element.prototype.oMatchesSelector ||
+    window.Element.prototype.webkitMatchesSelector ||
     function (s) {
       var matches = (this.document || this.ownerDocument).querySelectorAll(s);
       var i = matches.length;
@@ -249,7 +249,7 @@ module.exports.Component = registerComponent('teleport-controls', {
 
   update: function (oldData) {
     var data = this.data;
-    var diff = AFRAME.utils.diff(data, oldData);
+    var diff = window.AFRAME.utils.diff(data, oldData);
 
     // Update normal.
     this.referenceNormal.copy(data.landingNormal);

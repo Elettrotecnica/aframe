@@ -103,7 +103,7 @@ module.exports.Component = registerComponent('mediastream-sound', {
     // browser doesn't (Safari, apparently), one can fallback to
     // setting the stream directly.
     if (this.data.src &&
-        this.data.src instanceof HTMLMediaElement &&
+        this.data.src instanceof window.HTMLMediaElement &&
         this.data.src.captureStream) {
       this.src = this.data.src;
       this.src.muted = true;
