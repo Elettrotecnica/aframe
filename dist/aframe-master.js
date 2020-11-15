@@ -58617,6 +58617,20 @@ module.exports.Component = registerComponent('mediastream-sound', {
         this.sound.disconnect();
       }
       if (newStream) {
+        // Chrome seems to require a MediaStream be attached to an
+        // AudioElement before AudioNodes work correctly We don't want
+        // to do this in other browsers, particularly in Safari, which
+        // actually plays the audio despite setting the volume to 0.
+        // Might go away when
+        // https://bugs.chromium.org/p/chromium/issues/detail?id=933677
+        // is solved.
+        if (/chrome/i.test(navigator.userAgent)) {
+          this.audioEl = document.createElement('audio');
+          this.audioEl.setAttribute('autoplay', 'autoplay');
+          this.audioEl.setAttribute('playsinline', 'playsinline');
+          this.audioEl.srcObject = newStream;
+          this.audioEl.muted = true;
+        }
         const soundSource = this.sound.context.createMediaStreamSource(newStream);
         this.sound.setNodeSource(soundSource);
         this.el.emit('sound-source-set', { soundSource });
@@ -70315,7 +70329,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.0.4 (Date 2020-11-14, Commit #d80a0a5d)');
+console.log('A-Frame Version: 1.0.4 (Date 2020-11-15, Commit #803bb51f)');
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
