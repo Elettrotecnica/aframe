@@ -91,6 +91,7 @@ module.exports.AScene = registerElement('a-scene', {
         // Renderer initialization
         setupCanvas(this);
         this.setupRenderer();
+        loadingScreen.setup(this, getCanvasSize);
 
         this.resize();
         if (!embedded) { this.addFullScreenStyles(); }
@@ -309,7 +310,6 @@ module.exports.AScene = registerElement('a-scene', {
                   vrManager.layersEnabled = xrInit.requiredFeatures.indexOf('layers') !== -1;
                   vrManager.setSession(xrSession);
                   xrSession.addEventListener('end', self.exitVRBound);
-                  if (useAR) { self.addState('ar-mode'); }
                   enterVRSuccess(resolve);
                 },
                 function requestFail (error) {
@@ -321,7 +321,6 @@ module.exports.AScene = registerElement('a-scene', {
             });
           } else {
             vrDisplay = utils.device.getVRDisplay();
-            self.addState('vr-mode');
             vrManager.setDevice(vrDisplay);
             if (vrDisplay.isPresenting &&
                 !window.hasNativeWebVRImplementation) {
@@ -358,6 +357,11 @@ module.exports.AScene = registerElement('a-scene', {
             window.dispatchEvent(event);
           }
 
+          if (useAR) {
+            self.addState('ar-mode');
+          } else {
+            self.addState('vr-mode');
+          }
           self.emit('enter-vr', {target: self});
           // Lock to landscape orientation on mobile.
           if (!isWebXRAvailable && self.isMobile && screen.orientation && screen.orientation.lock) {
@@ -402,7 +406,7 @@ module.exports.AScene = registerElement('a-scene', {
         var vrManager = this.renderer.xr;
 
         // Don't exit VR if not in VR.
-        if (!this.is('vr-mode')) { return Promise.resolve('Not in VR.'); }
+        if (!this.is('vr-mode') && !this.is('ar-mode')) { return Promise.resolve('Not in immersive mode.'); }
 
         // Handle exiting VR if not yet already and in a headset or polyfill.
         if (this.checkHeadsetConnected() || this.isMobile) {
@@ -658,7 +662,6 @@ module.exports.AScene = registerElement('a-scene', {
         this.addEventListener('camera-set-active', function () {
           renderer.xr.setPoseTarget(self.camera.el.object3D);
         });
-        loadingScreen.setup(this, getCanvasSize);
       },
       writable: window.debug
     },
@@ -812,6 +815,7 @@ module.exports.AScene = registerElement('a-scene', {
  * @param {boolean} isVR - If in VR
  */
 function getCanvasSize (canvasEl, embedded, maxSize, isVR) {
+  if (!canvasEl.parentElement) { return {height: 0, width: 0}; }
   if (embedded) {
     return {
       height: canvasEl.parentElement.offsetHeight,
