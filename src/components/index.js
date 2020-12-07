@@ -51,6 +51,7 @@ require('./scene/vr-mode-ui');
 /** Downstream Components */
 require('./absolute-position-listener');
 require('./absolute-rotation-listener');
+require('./copy-material');
 require('./mediastream-sound');
 require('./remote-hand-controls');
 require('./teleport-controls');
