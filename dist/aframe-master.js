@@ -59581,6 +59581,7 @@ module.exports.Component = registerComponent('raycaster', {
     origin: {type: 'vec3'},
     showLine: {default: false},
     lineColor: {default: 'white'},
+    lineOpacity: {default: 1},
     useWorldCoordinates: {default: false}
   },
 
@@ -59730,7 +59731,7 @@ module.exports.Component = registerComponent('raycaster', {
   },
 
   /**
-   * Raycast for intersections and emit events for current and cleared inersections.
+   * Raycast for intersections and emit events for current and cleared intersections.
    */
   checkIntersections: function () {
     var clearedIntersectedEls = this.clearedIntersectedEls;
@@ -59908,6 +59909,7 @@ module.exports.Component = registerComponent('raycaster', {
     this.lineData.start = data.origin;
     this.lineData.end = endVec3.copy(this.unitLineEndVec3).multiplyScalar(length);
     this.lineData.color = data.lineColor;
+    this.lineData.opacity = data.lineOpacity;
     el.setAttribute('line', this.lineData);
   },
 
@@ -59916,7 +59918,7 @@ module.exports.Component = registerComponent('raycaster', {
    * Children are flattened by one level, removing the THREE.Group wrapper,
    * so that non-recursive raycasting remains useful.
    *
-   * Only push children defined as component attachemnts (e.g., setObject3D),
+   * Only push children defined as component attachements (e.g., setObject3D),
    * NOT actual children in the scene graph hierarchy.
    *
    * @param  {Array<Element>} els
@@ -61437,6 +61439,9 @@ module.exports.Component = registerComponent('vr-mode-ui', {
         uiElement.parentNode.removeChild(uiElement);
       }
     });
+    this.enterVREl = undefined;
+    this.enterAREl = undefined;
+    this.orientationModalEl = undefined;
   },
 
   updateEnterInterfaces: function () {
@@ -62521,14 +62526,11 @@ module.exports.Component = registerComponent('text', {
     this.shaderData = {};
     this.geometry = createTextGeometry();
     this.createOrUpdateMaterial();
-    this.mesh = new THREE.Mesh(this.geometry, this.material);
-    this.el.setObject3D(this.attrName, this.mesh);
   },
 
   update: function (oldData) {
     var data = this.data;
     var font = this.currentFont;
-
     if (textures[data.font]) {
       this.texture = textures[data.font];
     } else {
@@ -62564,9 +62566,7 @@ module.exports.Component = registerComponent('text', {
     this.material = null;
     this.texture.dispose();
     this.texture = null;
-    if (this.shaderObject) {
-      delete this.shaderObject;
-    }
+    if (this.shaderObject) { delete this.shaderObject; }
   },
 
   /**
@@ -62631,7 +62631,7 @@ module.exports.Component = registerComponent('text', {
     if (!data.font) { warn('No font specified. Using the default font.'); }
 
     // Make invisible during font swap.
-    this.mesh.visible = false;
+    if (this.mesh) { this.mesh.visible = false; }
 
     // Look up font URL to use, and perform cached load.
     fontSrc = this.lookupFont(data.font || DEFAULT_FONT) || data.font;
@@ -62647,14 +62647,7 @@ module.exports.Component = registerComponent('text', {
       if (!fontWidthFactors[fontSrc]) {
         font.widthFactor = fontWidthFactors[font] = computeFontWidthFactor(font);
       }
-
-      // Update geometry given font metrics.
-      self.updateGeometry(geometry, font);
-
-      // Set font and update layout.
       self.currentFont = font;
-      self.updateLayout();
-
       // Look up font image URL to use, and perform cached load.
       fontImgSrc = self.getFontImageSrc();
       cache.get(fontImgSrc, function () {
@@ -62666,6 +62659,11 @@ module.exports.Component = registerComponent('text', {
         texture.needsUpdate = true;
         textures[data.font] = texture;
         self.texture = texture;
+        self.initMesh();
+        self.currentFont = font;
+        // Update geometry given font metrics.
+        self.updateGeometry(geometry, font);
+        self.updateLayout();
         self.mesh.visible = true;
         el.emit('textfontset', {font: data.font, fontObj: font});
       }).catch(function (err) {
@@ -62676,6 +62674,12 @@ module.exports.Component = registerComponent('text', {
       error(err.message);
       error(err.stack);
     });
+  },
+
+  initMesh: function () {
+    if (this.mesh) { return; }
+    this.mesh = new THREE.Mesh(this.geometry, this.material);
+    this.el.setObject3D(this.attrName, this.mesh);
   },
 
   getFontImageSrc: function () {
@@ -62709,7 +62713,7 @@ module.exports.Component = registerComponent('text', {
     var x;
     var y;
 
-    if (!geometry.layout) { return; }
+    if (!mesh || !geometry.layout) { return; }
 
     // Determine width to use (defined width, geometry's width, or default width).
     geometryComponent = el.getAttribute('geometry');
@@ -70632,7 +70636,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.1.0 (Date 2020-12-07, Commit #849302a7)');
+console.log('A-Frame Version: 1.1.0 (Date 2021-01-01, Commit #0ffe4157)');
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
