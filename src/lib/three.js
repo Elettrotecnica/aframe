@@ -24,6 +24,8 @@ require('super-three/examples/js/loaders/DRACOLoader');  // THREE.DRACOLoader
 require('super-three/examples/js/loaders/GLTFLoader');  // THREE.GLTFLoader
 require('super-three/examples/js/loaders/OBJLoader');  // THREE.OBJLoader
 require('super-three/examples/js/loaders/MTLLoader');  // THREE.MTLLoader
+require('super-three/examples/js/utils/BufferGeometryUtils');  // THREE.BufferGeometryUtils
+require('super-three/examples/js/lights/LightProbeGenerator'); // THREE.LightProbeGenerator
 
 THREE.DRACOLoader.prototype.crossOrigin = 'anonymous';
 THREE.GLTFLoader.prototype.crossOrigin = 'anonymous';

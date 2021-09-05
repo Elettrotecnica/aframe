@@ -3276,7 +3276,7 @@ function findChar (array, value, start) {
   }
   return -1
 }
-},{"as-number":2,"word-wrapper":47,"xtend":50}],23:[function(_dereq_,module,exports){
+},{"as-number":2,"word-wrapper":49,"xtend":52}],23:[function(_dereq_,module,exports){
 (function (Buffer){(function (){
 var xhr = _dereq_('xhr')
 var noop = function(){}
@@ -3378,7 +3378,7 @@ function getBinaryOpts(opt) {
 
 }).call(this)}).call(this,_dereq_("buffer").Buffer)
 
-},{"./lib/is-binary":24,"buffer":7,"parse-bmfont-ascii":26,"parse-bmfont-binary":27,"parse-bmfont-xml":28,"xhr":48,"xtend":50}],24:[function(_dereq_,module,exports){
+},{"./lib/is-binary":24,"buffer":7,"parse-bmfont-ascii":26,"parse-bmfont-binary":27,"parse-bmfont-xml":28,"xhr":50,"xtend":52}],24:[function(_dereq_,module,exports){
 (function (Buffer){(function (){
 var equal = _dereq_('buffer-equal')
 var HEADER = Buffer.from([66, 77, 70, 3])
@@ -3838,7 +3838,7 @@ function getAttribList(element) {
 function mapName(nodeName) {
   return NAME_MAP[nodeName.toLowerCase()] || nodeName
 }
-},{"./parse-attribs":29,"xml-parse-from-string":49}],29:[function(_dereq_,module,exports){
+},{"./parse-attribs":29,"xml-parse-from-string":51}],29:[function(_dereq_,module,exports){
 //Some versions of GlyphDesigner have a typo
 //that causes some bugs with parsing. 
 //Need to confirm with recent version of the software
@@ -4133,7 +4133,7 @@ module.exports = present;
 
 }).call(this)}).call(this,_dereq_("timers").setImmediate)
 
-},{"timers":44}],33:[function(_dereq_,module,exports){
+},{"timers":46}],33:[function(_dereq_,module,exports){
 var dtype = _dereq_('dtype')
 var anArray = _dereq_('an-array')
 var isBuffer = _dereq_('is-buffer')
@@ -43296,6 +43296,247 @@ module.exports = anime;
 })));
 
 },{}],36:[function(_dereq_,module,exports){
+THREE.LightProbeGenerator = {
+
+	// https://www.ppsloan.org/publications/StupidSH36.pdf
+	fromCubeTexture: function ( cubeTexture ) {
+
+		var norm, lengthSq, weight, totalWeight = 0;
+
+		var coord = new THREE.Vector3();
+
+		var dir = new THREE.Vector3();
+
+		var color = new THREE.Color();
+
+		var shBasis = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+
+		var sh = new THREE.SphericalHarmonics3();
+		var shCoefficients = sh.coefficients;
+
+		for ( var faceIndex = 0; faceIndex < 6; faceIndex ++ ) {
+
+			var image = cubeTexture.image[ faceIndex ];
+
+			var width = image.width;
+			var height = image.height;
+
+			var canvas = document.createElement( 'canvas' );
+
+			canvas.width = width;
+			canvas.height = height;
+
+			var context = canvas.getContext( '2d' );
+
+			context.drawImage( image, 0, 0, width, height );
+
+			var imageData = context.getImageData( 0, 0, width, height );
+
+			var data = imageData.data;
+
+			var imageWidth = imageData.width; // assumed to be square
+
+			var pixelSize = 2 / imageWidth;
+
+			for ( var i = 0, il = data.length; i < il; i += 4 ) { // RGBA assumed
+
+				// pixel color
+				color.setRGB( data[ i ] / 255, data[ i + 1 ] / 255, data[ i + 2 ] / 255 );
+
+				// convert to linear color space
+				convertColorToLinear( color, cubeTexture.encoding );
+
+				// pixel coordinate on unit cube
+
+				var pixelIndex = i / 4;
+
+				var col = - 1 + ( pixelIndex % imageWidth + 0.5 ) * pixelSize;
+
+				var row = 1 - ( Math.floor( pixelIndex / imageWidth ) + 0.5 ) * pixelSize;
+
+				switch ( faceIndex ) {
+
+					case 0: coord.set( - 1, row, - col ); break;
+
+					case 1: coord.set( 1, row, col ); break;
+
+					case 2: coord.set( - col, 1, - row ); break;
+
+					case 3: coord.set( - col, - 1, row ); break;
+
+					case 4: coord.set( - col, row, 1 ); break;
+
+					case 5: coord.set( col, row, - 1 ); break;
+
+				}
+
+				// weight assigned to this pixel
+
+				lengthSq = coord.lengthSq();
+
+				weight = 4 / ( Math.sqrt( lengthSq ) * lengthSq );
+
+				totalWeight += weight;
+
+				// direction vector to this pixel
+				dir.copy( coord ).normalize();
+
+				// evaluate SH basis functions in direction dir
+				THREE.SphericalHarmonics3.getBasisAt( dir, shBasis );
+
+				// accummuulate
+				for ( var j = 0; j < 9; j ++ ) {
+
+					shCoefficients[ j ].x += shBasis[ j ] * color.r * weight;
+					shCoefficients[ j ].y += shBasis[ j ] * color.g * weight;
+					shCoefficients[ j ].z += shBasis[ j ] * color.b * weight;
+
+				}
+
+			}
+
+		}
+
+		// normalize
+		norm = ( 4 * Math.PI ) / totalWeight;
+
+		for ( var j = 0; j < 9; j ++ ) {
+
+			shCoefficients[ j ].x *= norm;
+			shCoefficients[ j ].y *= norm;
+			shCoefficients[ j ].z *= norm;
+
+		}
+
+		return new THREE.LightProbe( sh );
+
+	},
+
+	fromCubeRenderTarget: function ( renderer, cubeRenderTarget ) {
+
+		// The renderTarget must be set to RGBA in order to make readRenderTargetPixels works
+		var norm, lengthSq, weight, totalWeight = 0;
+
+		var coord = new THREE.Vector3();
+
+		var dir = new THREE.Vector3();
+
+		var color = new THREE.Color();
+
+		var shBasis = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+
+		var sh = new THREE.SphericalHarmonics3();
+		var shCoefficients = sh.coefficients;
+
+		for ( var faceIndex = 0; faceIndex < 6; faceIndex ++ ) {
+
+			var imageWidth = cubeRenderTarget.width; // assumed to be square
+			var data = new Uint8Array( imageWidth * imageWidth * 4 );
+			renderer.readRenderTargetPixels( cubeRenderTarget, 0, 0, imageWidth, imageWidth, data, faceIndex );
+
+			var pixelSize = 2 / imageWidth;
+
+			for ( var i = 0, il = data.length; i < il; i += 4 ) { // RGBA assumed
+
+				// pixel color
+				color.setRGB( data[ i ] / 255, data[ i + 1 ] / 255, data[ i + 2 ] / 255 );
+
+				// convert to linear color space
+				convertColorToLinear( color, cubeRenderTarget.texture.encoding );
+
+				// pixel coordinate on unit cube
+
+				var pixelIndex = i / 4;
+
+				var col = - 1 + ( pixelIndex % imageWidth + 0.5 ) * pixelSize;
+
+				var row = 1 - ( Math.floor( pixelIndex / imageWidth ) + 0.5 ) * pixelSize;
+
+				switch ( faceIndex ) {
+
+					case 0: coord.set( 1, row, - col ); break;
+
+					case 1: coord.set( - 1, row, col ); break;
+
+					case 2: coord.set( col, 1, - row ); break;
+
+					case 3: coord.set( col, - 1, row ); break;
+
+					case 4: coord.set( col, row, 1 ); break;
+
+					case 5: coord.set( - col, row, - 1 ); break;
+
+				}
+
+				// weight assigned to this pixel
+
+				lengthSq = coord.lengthSq();
+
+				weight = 4 / ( Math.sqrt( lengthSq ) * lengthSq );
+
+				totalWeight += weight;
+
+				// direction vector to this pixel
+				dir.copy( coord ).normalize();
+
+				// evaluate SH basis functions in direction dir
+				THREE.SphericalHarmonics3.getBasisAt( dir, shBasis );
+
+				// accummuulate
+				for ( var j = 0; j < 9; j ++ ) {
+
+					shCoefficients[ j ].x += shBasis[ j ] * color.r * weight;
+					shCoefficients[ j ].y += shBasis[ j ] * color.g * weight;
+					shCoefficients[ j ].z += shBasis[ j ] * color.b * weight;
+
+				}
+
+			}
+
+		}
+
+		// normalize
+		norm = ( 4 * Math.PI ) / totalWeight;
+
+		for ( var j = 0; j < 9; j ++ ) {
+
+			shCoefficients[ j ].x *= norm;
+			shCoefficients[ j ].y *= norm;
+			shCoefficients[ j ].z *= norm;
+
+		}
+
+		return new THREE.LightProbe( sh );
+
+	}
+
+};
+
+var convertColorToLinear = function ( color, encoding ) {
+
+	switch ( encoding ) {
+
+		case THREE.sRGBEncoding:
+
+			color.convertSRGBToLinear();
+			break;
+
+		case THREE.LinearEncoding:
+
+			break;
+
+		default:
+
+			console.warn( 'WARNING: LightProbeGenerator convertColorToLinear() encountered an unsupported encoding.' );
+			break;
+
+	}
+
+	return color;
+
+};
+
+},{}],37:[function(_dereq_,module,exports){
 THREE.DRACOLoader = function ( manager ) {
 
 	THREE.Loader.call( this, manager );
@@ -43928,7 +44169,7 @@ THREE.DRACOLoader.getDecoderModule = function () {
 
 };
 
-},{}],37:[function(_dereq_,module,exports){
+},{}],38:[function(_dereq_,module,exports){
 THREE.GLTFLoader = ( function () {
 
 	function GLTFLoader( manager ) {
@@ -47797,7 +48038,7 @@ THREE.GLTFLoader = ( function () {
 
 } )();
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],39:[function(_dereq_,module,exports){
 /**
  * Loads a Wavefront .mtl file specifying materials
  */
@@ -48348,7 +48589,7 @@ THREE.MTLLoader.MaterialCreator.prototype = {
 
 };
 
-},{}],39:[function(_dereq_,module,exports){
+},{}],40:[function(_dereq_,module,exports){
 THREE.OBJLoader = ( function () {
 
 	// o object_name | g group_name
@@ -49213,7 +49454,792 @@ THREE.OBJLoader = ( function () {
 
 } )();
 
-},{}],40:[function(_dereq_,module,exports){
+},{}],41:[function(_dereq_,module,exports){
+THREE.BufferGeometryUtils = {
+
+	computeTangents: function ( geometry ) {
+
+		var index = geometry.index;
+		var attributes = geometry.attributes;
+
+		// based on http://www.terathon.com/code/tangent.html
+		// (per vertex tangents)
+
+		if ( index === null ||
+			 attributes.position === undefined ||
+			 attributes.normal === undefined ||
+			 attributes.uv === undefined ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .computeTangents() failed. Missing required attributes (index, position, normal or uv)' );
+			return;
+
+		}
+
+		var indices = index.array;
+		var positions = attributes.position.array;
+		var normals = attributes.normal.array;
+		var uvs = attributes.uv.array;
+
+		var nVertices = positions.length / 3;
+
+		if ( attributes.tangent === undefined ) {
+
+			geometry.setAttribute( 'tangent', new THREE.BufferAttribute( new Float32Array( 4 * nVertices ), 4 ) );
+
+		}
+
+		var tangents = attributes.tangent.array;
+
+		var tan1 = [], tan2 = [];
+
+		for ( var i = 0; i < nVertices; i ++ ) {
+
+			tan1[ i ] = new THREE.Vector3();
+			tan2[ i ] = new THREE.Vector3();
+
+		}
+
+		var vA = new THREE.Vector3(),
+			vB = new THREE.Vector3(),
+			vC = new THREE.Vector3(),
+
+			uvA = new THREE.Vector2(),
+			uvB = new THREE.Vector2(),
+			uvC = new THREE.Vector2(),
+
+			sdir = new THREE.Vector3(),
+			tdir = new THREE.Vector3();
+
+		function handleTriangle( a, b, c ) {
+
+			vA.fromArray( positions, a * 3 );
+			vB.fromArray( positions, b * 3 );
+			vC.fromArray( positions, c * 3 );
+
+			uvA.fromArray( uvs, a * 2 );
+			uvB.fromArray( uvs, b * 2 );
+			uvC.fromArray( uvs, c * 2 );
+
+			vB.sub( vA );
+			vC.sub( vA );
+
+			uvB.sub( uvA );
+			uvC.sub( uvA );
+
+			var r = 1.0 / ( uvB.x * uvC.y - uvC.x * uvB.y );
+
+			// silently ignore degenerate uv triangles having coincident or colinear vertices
+
+			if ( ! isFinite( r ) ) return;
+
+			sdir.copy( vB ).multiplyScalar( uvC.y ).addScaledVector( vC, - uvB.y ).multiplyScalar( r );
+			tdir.copy( vC ).multiplyScalar( uvB.x ).addScaledVector( vB, - uvC.x ).multiplyScalar( r );
+
+			tan1[ a ].add( sdir );
+			tan1[ b ].add( sdir );
+			tan1[ c ].add( sdir );
+
+			tan2[ a ].add( tdir );
+			tan2[ b ].add( tdir );
+			tan2[ c ].add( tdir );
+
+		}
+
+		var groups = geometry.groups;
+
+		if ( groups.length === 0 ) {
+
+			groups = [ {
+				start: 0,
+				count: indices.length
+			} ];
+
+		}
+
+		for ( var i = 0, il = groups.length; i < il; ++ i ) {
+
+			var group = groups[ i ];
+
+			var start = group.start;
+			var count = group.count;
+
+			for ( var j = start, jl = start + count; j < jl; j += 3 ) {
+
+				handleTriangle(
+					indices[ j + 0 ],
+					indices[ j + 1 ],
+					indices[ j + 2 ]
+				);
+
+			}
+
+		}
+
+		var tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
+		var n = new THREE.Vector3(), n2 = new THREE.Vector3();
+		var w, t, test;
+
+		function handleVertex( v ) {
+
+			n.fromArray( normals, v * 3 );
+			n2.copy( n );
+
+			t = tan1[ v ];
+
+			// Gram-Schmidt orthogonalize
+
+			tmp.copy( t );
+			tmp.sub( n.multiplyScalar( n.dot( t ) ) ).normalize();
+
+			// Calculate handedness
+
+			tmp2.crossVectors( n2, t );
+			test = tmp2.dot( tan2[ v ] );
+			w = ( test < 0.0 ) ? - 1.0 : 1.0;
+
+			tangents[ v * 4 ] = tmp.x;
+			tangents[ v * 4 + 1 ] = tmp.y;
+			tangents[ v * 4 + 2 ] = tmp.z;
+			tangents[ v * 4 + 3 ] = w;
+
+		}
+
+		for ( var i = 0, il = groups.length; i < il; ++ i ) {
+
+			var group = groups[ i ];
+
+			var start = group.start;
+			var count = group.count;
+
+			for ( var j = start, jl = start + count; j < jl; j += 3 ) {
+
+				handleVertex( indices[ j + 0 ] );
+				handleVertex( indices[ j + 1 ] );
+				handleVertex( indices[ j + 2 ] );
+
+			}
+
+		}
+
+	},
+
+	/**
+	 * @param  {Array<THREE.BufferGeometry>} geometries
+	 * @param  {Boolean} useGroups
+	 * @return {THREE.BufferGeometry}
+	 */
+	mergeBufferGeometries: function ( geometries, useGroups ) {
+
+		var isIndexed = geometries[ 0 ].index !== null;
+
+		var attributesUsed = new Set( Object.keys( geometries[ 0 ].attributes ) );
+		var morphAttributesUsed = new Set( Object.keys( geometries[ 0 ].morphAttributes ) );
+
+		var attributes = {};
+		var morphAttributes = {};
+
+		var morphTargetsRelative = geometries[ 0 ].morphTargetsRelative;
+
+		var mergedGeometry = new THREE.BufferGeometry();
+
+		var offset = 0;
+
+		for ( var i = 0; i < geometries.length; ++ i ) {
+
+			var geometry = geometries[ i ];
+			var attributesCount = 0;
+
+			// ensure that all geometries are indexed, or none
+
+			if ( isIndexed !== ( geometry.index !== null ) ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '. All geometries must have compatible attributes; make sure index attribute exists among all geometries, or in none of them.' );
+				return null;
+
+			}
+
+			// gather attributes, exit early if they're different
+
+			for ( var name in geometry.attributes ) {
+
+				if ( ! attributesUsed.has( name ) ) {
+
+					console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '. All geometries must have compatible attributes; make sure "' + name + '" attribute exists among all geometries, or in none of them.' );
+					return null;
+
+				}
+
+				if ( attributes[ name ] === undefined ) attributes[ name ] = [];
+
+				attributes[ name ].push( geometry.attributes[ name ] );
+
+				attributesCount ++;
+
+			}
+
+			// ensure geometries have the same number of attributes
+
+			if ( attributesCount !== attributesUsed.size ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '. Make sure all geometries have the same number of attributes.' );
+				return null;
+
+			}
+
+			// gather morph attributes, exit early if they're different
+
+			if ( morphTargetsRelative !== geometry.morphTargetsRelative ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '. .morphTargetsRelative must be consistent throughout all geometries.' );
+				return null;
+
+			}
+
+			for ( var name in geometry.morphAttributes ) {
+
+				if ( ! morphAttributesUsed.has( name ) ) {
+
+					console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '.  .morphAttributes must be consistent throughout all geometries.' );
+					return null;
+
+				}
+
+				if ( morphAttributes[ name ] === undefined ) morphAttributes[ name ] = [];
+
+				morphAttributes[ name ].push( geometry.morphAttributes[ name ] );
+
+			}
+
+			// gather .userData
+
+			mergedGeometry.userData.mergedUserData = mergedGeometry.userData.mergedUserData || [];
+			mergedGeometry.userData.mergedUserData.push( geometry.userData );
+
+			if ( useGroups ) {
+
+				var count;
+
+				if ( isIndexed ) {
+
+					count = geometry.index.count;
+
+				} else if ( geometry.attributes.position !== undefined ) {
+
+					count = geometry.attributes.position.count;
+
+				} else {
+
+					console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed with geometry at index ' + i + '. The geometry must have either an index or a position attribute' );
+					return null;
+
+				}
+
+				mergedGeometry.addGroup( offset, count, i );
+
+				offset += count;
+
+			}
+
+		}
+
+		// merge indices
+
+		if ( isIndexed ) {
+
+			var indexOffset = 0;
+			var mergedIndex = [];
+
+			for ( var i = 0; i < geometries.length; ++ i ) {
+
+				var index = geometries[ i ].index;
+
+				for ( var j = 0; j < index.count; ++ j ) {
+
+					mergedIndex.push( index.getX( j ) + indexOffset );
+
+				}
+
+				indexOffset += geometries[ i ].attributes.position.count;
+
+			}
+
+			mergedGeometry.setIndex( mergedIndex );
+
+		}
+
+		// merge attributes
+
+		for ( var name in attributes ) {
+
+			var mergedAttribute = this.mergeBufferAttributes( attributes[ name ] );
+
+			if ( ! mergedAttribute ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed while trying to merge the ' + name + ' attribute.' );
+				return null;
+
+			}
+
+			mergedGeometry.setAttribute( name, mergedAttribute );
+
+		}
+
+		// merge morph attributes
+
+		for ( var name in morphAttributes ) {
+
+			var numMorphTargets = morphAttributes[ name ][ 0 ].length;
+
+			if ( numMorphTargets === 0 ) break;
+
+			mergedGeometry.morphAttributes = mergedGeometry.morphAttributes || {};
+			mergedGeometry.morphAttributes[ name ] = [];
+
+			for ( var i = 0; i < numMorphTargets; ++ i ) {
+
+				var morphAttributesToMerge = [];
+
+				for ( var j = 0; j < morphAttributes[ name ].length; ++ j ) {
+
+					morphAttributesToMerge.push( morphAttributes[ name ][ j ][ i ] );
+
+				}
+
+				var mergedMorphAttribute = this.mergeBufferAttributes( morphAttributesToMerge );
+
+				if ( ! mergedMorphAttribute ) {
+
+					console.error( 'THREE.BufferGeometryUtils: .mergeBufferGeometries() failed while trying to merge the ' + name + ' morphAttribute.' );
+					return null;
+
+				}
+
+				mergedGeometry.morphAttributes[ name ].push( mergedMorphAttribute );
+
+			}
+
+		}
+
+		return mergedGeometry;
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferAttribute>} attributes
+	 * @return {THREE.BufferAttribute}
+	 */
+	mergeBufferAttributes: function ( attributes ) {
+
+		var TypedArray;
+		var itemSize;
+		var normalized;
+		var arrayLength = 0;
+
+		for ( var i = 0; i < attributes.length; ++ i ) {
+
+			var attribute = attributes[ i ];
+
+			if ( attribute.isInterleavedBufferAttribute ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferAttributes() failed. InterleavedBufferAttributes are not supported.' );
+				return null;
+
+			}
+
+			if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+			if ( TypedArray !== attribute.array.constructor ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferAttributes() failed. BufferAttribute.array must be of consistent array types across matching attributes.' );
+				return null;
+
+			}
+
+			if ( itemSize === undefined ) itemSize = attribute.itemSize;
+			if ( itemSize !== attribute.itemSize ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferAttributes() failed. BufferAttribute.itemSize must be consistent across matching attributes.' );
+				return null;
+
+			}
+
+			if ( normalized === undefined ) normalized = attribute.normalized;
+			if ( normalized !== attribute.normalized ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeBufferAttributes() failed. BufferAttribute.normalized must be consistent across matching attributes.' );
+				return null;
+
+			}
+
+			arrayLength += attribute.array.length;
+
+		}
+
+		var array = new TypedArray( arrayLength );
+		var offset = 0;
+
+		for ( var i = 0; i < attributes.length; ++ i ) {
+
+			array.set( attributes[ i ].array, offset );
+
+			offset += attributes[ i ].array.length;
+
+		}
+
+		return new THREE.BufferAttribute( array, itemSize, normalized );
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferAttribute>} attributes
+	 * @return {Array<THREE.InterleavedBufferAttribute>}
+	 */
+	interleaveAttributes: function ( attributes ) {
+
+		// Interleaves the provided attributes into an InterleavedBuffer and returns
+		// a set of InterleavedBufferAttributes for each attribute
+		var TypedArray;
+		var arrayLength = 0;
+		var stride = 0;
+
+		// calculate the the length and type of the interleavedBuffer
+		for ( var i = 0, l = attributes.length; i < l; ++ i ) {
+
+			var attribute = attributes[ i ];
+
+			if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+			if ( TypedArray !== attribute.array.constructor ) {
+
+				console.error( 'AttributeBuffers of different types cannot be interleaved' );
+				return null;
+
+			}
+
+			arrayLength += attribute.array.length;
+			stride += attribute.itemSize;
+
+		}
+
+		// Create the set of buffer attributes
+		var interleavedBuffer = new THREE.InterleavedBuffer( new TypedArray( arrayLength ), stride );
+		var offset = 0;
+		var res = [];
+		var getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+		var setters = [ 'setX', 'setY', 'setZ', 'setW' ];
+
+		for ( var j = 0, l = attributes.length; j < l; j ++ ) {
+
+			var attribute = attributes[ j ];
+			var itemSize = attribute.itemSize;
+			var count = attribute.count;
+			var iba = new THREE.InterleavedBufferAttribute( interleavedBuffer, itemSize, offset, attribute.normalized );
+			res.push( iba );
+
+			offset += itemSize;
+
+			// Move the data for each attribute into the new interleavedBuffer
+			// at the appropriate offset
+			for ( var c = 0; c < count; c ++ ) {
+
+				for ( var k = 0; k < itemSize; k ++ ) {
+
+					iba[ setters[ k ] ]( c, attribute[ getters[ k ] ]( c ) );
+
+				}
+
+			}
+
+		}
+
+		return res;
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferGeometry>} geometry
+	 * @return {number}
+	 */
+	estimateBytesUsed: function ( geometry ) {
+
+		// Return the estimated memory used by this geometry in bytes
+		// Calculate using itemSize, count, and BYTES_PER_ELEMENT to account
+		// for InterleavedBufferAttributes.
+		var mem = 0;
+		for ( var name in geometry.attributes ) {
+
+			var attr = geometry.getAttribute( name );
+			mem += attr.count * attr.itemSize * attr.array.BYTES_PER_ELEMENT;
+
+		}
+
+		var indices = geometry.getIndex();
+		mem += indices ? indices.count * indices.itemSize * indices.array.BYTES_PER_ELEMENT : 0;
+		return mem;
+
+	},
+
+	/**
+	 * @param {THREE.BufferGeometry} geometry
+	 * @param {number} tolerance
+	 * @return {THREE.BufferGeometry>}
+	 */
+	mergeVertices: function ( geometry, tolerance = 1e-4 ) {
+
+		tolerance = Math.max( tolerance, Number.EPSILON );
+
+		// Generate an index buffer if the geometry doesn't have one, or optimize it
+		// if it's already available.
+		var hashToIndex = {};
+		var indices = geometry.getIndex();
+		var positions = geometry.getAttribute( 'position' );
+		var vertexCount = indices ? indices.count : positions.count;
+
+		// next value for triangle indices
+		var nextIndex = 0;
+
+		// attributes and new attribute arrays
+		var attributeNames = Object.keys( geometry.attributes );
+		var attrArrays = {};
+		var morphAttrsArrays = {};
+		var newIndices = [];
+		var getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+
+		// initialize the arrays
+		for ( var i = 0, l = attributeNames.length; i < l; i ++ ) {
+
+			var name = attributeNames[ i ];
+
+			attrArrays[ name ] = [];
+
+			var morphAttr = geometry.morphAttributes[ name ];
+			if ( morphAttr ) {
+
+				morphAttrsArrays[ name ] = new Array( morphAttr.length ).fill().map( () => [] );
+
+			}
+
+		}
+
+		// convert the error tolerance to an amount of decimal places to truncate to
+		var decimalShift = Math.log10( 1 / tolerance );
+		var shiftMultiplier = Math.pow( 10, decimalShift );
+		for ( var i = 0; i < vertexCount; i ++ ) {
+
+			var index = indices ? indices.getX( i ) : i;
+
+			// Generate a hash for the vertex attributes at the current index 'i'
+			var hash = '';
+			for ( var j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+				var name = attributeNames[ j ];
+				var attribute = geometry.getAttribute( name );
+				var itemSize = attribute.itemSize;
+
+				for ( var k = 0; k < itemSize; k ++ ) {
+
+					// double tilde truncates the decimal value
+					hash += `${ ~ ~ ( attribute[ getters[ k ] ]( index ) * shiftMultiplier ) },`;
+
+				}
+
+			}
+
+			// Add another reference to the vertex if it's already
+			// used by another index
+			if ( hash in hashToIndex ) {
+
+				newIndices.push( hashToIndex[ hash ] );
+
+			} else {
+
+				// copy data to the new index in the attribute arrays
+				for ( var j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+					var name = attributeNames[ j ];
+					var attribute = geometry.getAttribute( name );
+					var morphAttr = geometry.morphAttributes[ name ];
+					var itemSize = attribute.itemSize;
+					var newarray = attrArrays[ name ];
+					var newMorphArrays = morphAttrsArrays[ name ];
+
+					for ( var k = 0; k < itemSize; k ++ ) {
+
+						var getterFunc = getters[ k ];
+						newarray.push( attribute[ getterFunc ]( index ) );
+
+						if ( morphAttr ) {
+
+							for ( var m = 0, ml = morphAttr.length; m < ml; m ++ ) {
+
+								newMorphArrays[ m ].push( morphAttr[ m ][ getterFunc ]( index ) );
+
+							}
+
+						}
+
+					}
+
+				}
+
+				hashToIndex[ hash ] = nextIndex;
+				newIndices.push( nextIndex );
+				nextIndex ++;
+
+			}
+
+		}
+
+		// Generate typed arrays from new attribute arrays and update
+		// the attributeBuffers
+		const result = geometry.clone();
+		for ( var i = 0, l = attributeNames.length; i < l; i ++ ) {
+
+			var name = attributeNames[ i ];
+			var oldAttribute = geometry.getAttribute( name );
+
+			var buffer = new oldAttribute.array.constructor( attrArrays[ name ] );
+			var attribute = new THREE.BufferAttribute( buffer, oldAttribute.itemSize, oldAttribute.normalized );
+
+			result.setAttribute( name, attribute );
+
+			// Update the attribute arrays
+			if ( name in morphAttrsArrays ) {
+
+				for ( var j = 0; j < morphAttrsArrays[ name ].length; j ++ ) {
+
+					var oldMorphAttribute = geometry.morphAttributes[ name ][ j ];
+
+					var buffer = new oldMorphAttribute.array.constructor( morphAttrsArrays[ name ][ j ] );
+					var morphAttribute = new THREE.BufferAttribute( buffer, oldMorphAttribute.itemSize, oldMorphAttribute.normalized );
+					result.morphAttributes[ name ][ j ] = morphAttribute;
+
+				}
+
+			}
+
+		}
+
+		// indices
+
+		result.setIndex( newIndices );
+
+		return result;
+
+	},
+
+	/**
+	 * @param {THREE.BufferGeometry} geometry
+	 * @param {number} drawMode
+	 * @return {THREE.BufferGeometry>}
+	 */
+	toTrianglesDrawMode: function ( geometry, drawMode ) {
+
+		if ( drawMode === THREE.TrianglesDrawMode ) {
+
+			console.warn( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Geometry already defined as triangles.' );
+			return geometry;
+
+		}
+
+		if ( drawMode === THREE.TriangleFanDrawMode || drawMode === THREE.TriangleStripDrawMode ) {
+
+			var index = geometry.getIndex();
+
+			// generate index if not present
+
+			if ( index === null ) {
+
+				var indices = [];
+
+				var position = geometry.getAttribute( 'position' );
+
+				if ( position !== undefined ) {
+
+					for ( var i = 0; i < position.count; i ++ ) {
+
+						indices.push( i );
+
+					}
+
+					geometry.setIndex( indices );
+					index = geometry.getIndex();
+
+				} else {
+
+					console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Undefined position attribute. Processing not possible.' );
+					return geometry;
+
+				}
+
+			}
+
+			//
+
+			var numberOfTriangles = index.count - 2;
+			var newIndices = [];
+
+			if ( drawMode === THREE.TriangleFanDrawMode ) {
+
+				// gl.TRIANGLE_FAN
+
+				for ( var i = 1; i <= numberOfTriangles; i ++ ) {
+
+					newIndices.push( index.getX( 0 ) );
+					newIndices.push( index.getX( i ) );
+					newIndices.push( index.getX( i + 1 ) );
+
+				}
+
+			} else {
+
+				// gl.TRIANGLE_STRIP
+
+				for ( var i = 0; i < numberOfTriangles; i ++ ) {
+
+					if ( i % 2 === 0 ) {
+
+						newIndices.push( index.getX( i ) );
+						newIndices.push( index.getX( i + 1 ) );
+						newIndices.push( index.getX( i + 2 ) );
+
+
+					} else {
+
+						newIndices.push( index.getX( i + 2 ) );
+						newIndices.push( index.getX( i + 1 ) );
+						newIndices.push( index.getX( i ) );
+
+					}
+
+				}
+
+			}
+
+			if ( ( newIndices.length / 3 ) !== numberOfTriangles ) {
+
+				console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unable to generate correct amount of triangles.' );
+
+			}
+
+			// build final geometry
+
+			var newGeometry = geometry.clone();
+			newGeometry.setIndex( newIndices );
+			newGeometry.clearGroups();
+
+			return newGeometry;
+
+		} else {
+
+			console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unknown draw mode:', drawMode );
+			return geometry;
+
+		}
+
+	}
+
+};
+
+},{}],42:[function(_dereq_,module,exports){
 var createLayout = _dereq_('layout-bmfont-text')
 var inherits = _dereq_('inherits')
 var createIndices = _dereq_('quad-indices')
@@ -49339,7 +50365,7 @@ TextGeometry.prototype.computeBoundingBox = function () {
   utils.computeBox(positions, bbox)
 }
 
-},{"./lib/utils":41,"./lib/vertices":42,"inherits":17,"layout-bmfont-text":22,"object-assign":25,"quad-indices":33,"three-buffer-vertex-data":43}],41:[function(_dereq_,module,exports){
+},{"./lib/utils":43,"./lib/vertices":44,"inherits":17,"layout-bmfont-text":22,"object-assign":25,"quad-indices":33,"three-buffer-vertex-data":45}],43:[function(_dereq_,module,exports){
 var itemSize = 2
 var box = { min: [0, 0], max: [0, 0] }
 
@@ -49379,7 +50405,7 @@ module.exports.computeSphere = function (positions, output) {
   output.radius = length / 2
 }
 
-},{}],42:[function(_dereq_,module,exports){
+},{}],44:[function(_dereq_,module,exports){
 module.exports.pages = function pages (glyphs) {
   var pages = new Float32Array(glyphs.length * 4 * 1)
   var i = 0
@@ -49458,7 +50484,7 @@ module.exports.positions = function positions (glyphs) {
   return positions
 }
 
-},{}],43:[function(_dereq_,module,exports){
+},{}],45:[function(_dereq_,module,exports){
 var flatten = _dereq_('flatten-vertex-data')
 var warned = false;
 
@@ -49522,7 +50548,7 @@ function rebuildAttribute (attrib, data, itemSize) {
   return false
 }
 
-},{"flatten-vertex-data":14}],44:[function(_dereq_,module,exports){
+},{"flatten-vertex-data":14}],46:[function(_dereq_,module,exports){
 (function (setImmediate,clearImmediate){(function (){
 var nextTick = _dereq_('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -49602,9 +50628,9 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
 };
 }).call(this)}).call(this,_dereq_("timers").setImmediate,_dereq_("timers").clearImmediate)
 
-},{"process/browser.js":45,"timers":44}],45:[function(_dereq_,module,exports){
+},{"process/browser.js":47,"timers":46}],47:[function(_dereq_,module,exports){
 arguments[4][5][0].apply(exports,arguments)
-},{"dup":5}],46:[function(_dereq_,module,exports){
+},{"dup":5}],48:[function(_dereq_,module,exports){
 (function (global){(function (){
 /**
  * @license
@@ -53117,7 +54143,7 @@ return src;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],47:[function(_dereq_,module,exports){
+},{}],49:[function(_dereq_,module,exports){
 var newline = /\n/
 var newlineChar = '\n'
 var whitespace = /\s/
@@ -53245,7 +54271,7 @@ function monospace(text, start, end, width) {
         end: start+glyphs
     }
 }
-},{}],48:[function(_dereq_,module,exports){
+},{}],50:[function(_dereq_,module,exports){
 "use strict";
 var window = _dereq_("global/window")
 var isFunction = _dereq_("is-function")
@@ -53494,7 +54520,7 @@ function getXml(xhr) {
 
 function noop() {}
 
-},{"global/window":15,"is-function":19,"parse-headers":30,"xtend":50}],49:[function(_dereq_,module,exports){
+},{"global/window":15,"is-function":19,"parse-headers":30,"xtend":52}],51:[function(_dereq_,module,exports){
 module.exports = (function xmlparser() {
   //common browsers
   if (typeof self.DOMParser !== 'undefined') {
@@ -53523,7 +54549,7 @@ module.exports = (function xmlparser() {
   }
 })()
 
-},{}],50:[function(_dereq_,module,exports){
+},{}],52:[function(_dereq_,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -53544,10 +54570,10 @@ function extend() {
     return target
 }
 
-},{}],51:[function(_dereq_,module,exports){
+},{}],53:[function(_dereq_,module,exports){
 module.exports={
   "name": "aframe",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A web framework for building virtual reality experiences.",
   "homepage": "https://aframe.io/",
   "main": "dist/aframe-master.js",
@@ -53566,7 +54592,7 @@ module.exports={
     "lint:fix": "semistandard --fix",
     "precommit": "npm run lint",
     "prepush": "node scripts/testOnlyCheck.js",
-    "prerelease": "node scripts/release.js 1.0.4 1.1.0",
+    "prerelease": "node scripts/release.js 1.1.0 1.2.0",
     "start": "npm run dev",
     "start:https": "cross-env SSL=true npm run dev",
     "test": "karma start ./tests/karma.conf.js",
@@ -53594,7 +54620,7 @@ module.exports={
     "present": "0.0.6",
     "promise-polyfill": "^3.1.0",
     "super-animejs": "^3.1.0",
-    "super-three": "^0.123.1",
+    "super-three": "^0.128.3",
     "three-bmfont-text": "dmarcos/three-bmfont-text#1babdf8507c731a18f8af3b807292e2b9740955e",
     "webvr-polyfill": "^0.10.12"
   },
@@ -53681,7 +54707,7 @@ module.exports={
   }
 }
 
-},{}],52:[function(_dereq_,module,exports){
+},{}],54:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 /**
@@ -53724,7 +54750,7 @@ module.exports.Component = registerComponent('absolute-position-listener', {
   })()
 });
 
-},{"../core/component":116}],53:[function(_dereq_,module,exports){
+},{"../core/component":121}],55:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -53771,7 +54797,7 @@ module.exports.Component = registerComponent('absolute-rotation-listener', {
   })()
 });
 
-},{"../core/component":116}],54:[function(_dereq_,module,exports){
+},{"../core/component":121}],56:[function(_dereq_,module,exports){
 var anime = _dereq_('super-animejs');
 var components = _dereq_('../core/component').components;
 var registerComponent = _dereq_('../core/component').registerComponent;
@@ -54411,7 +55437,7 @@ function isRawProperty (data) {
          data.property.startsWith(STRING_OBJECT3D);
 }
 
-},{"../core/component":116,"../lib/three":164,"../utils":190,"super-animejs":34}],55:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils":196,"super-animejs":34}],57:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
 
@@ -54503,7 +55529,7 @@ module.exports.Component = registerComponent('camera', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164}],56:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169}],58:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 /**
@@ -54558,7 +55584,7 @@ module.exports.Component = registerComponent('copy-material', {
   }
 });
 
-},{"../core/component":116}],57:[function(_dereq_,module,exports){
+},{"../core/component":121}],59:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 var utils = _dereq_('../utils/');
@@ -54979,7 +56005,7 @@ module.exports.Component = registerComponent('cursor', {
   }
 });
 
-},{"../core/component":116,"../utils/":190}],58:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196}],60:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -55186,7 +56212,7 @@ module.exports.Component = registerComponent('daydream-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],59:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],61:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -55392,7 +56418,7 @@ module.exports.Component = registerComponent('gearvr-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],60:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],62:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -55434,7 +56460,8 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
     hand: {default: ''},  // This informs the degenerate arm model.
     defaultModel: {default: true},
     defaultModelColor: {default: 'gray'},
-    orientationOffset: {type: 'vec3'}
+    orientationOffset: {type: 'vec3'},
+    disabled: {default: false}
   },
 
   /**
@@ -55459,9 +56486,19 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
     this.onButtonTouchStart = function (evt) { onButtonEvent(evt.detail.id, 'touchstart', self); };
     this.onButtonTouchEnd = function (evt) { onButtonEvent(evt.detail.id, 'touchend', self); };
     this.controllerPresent = false;
+    this.wasControllerConnected = false;
     this.lastControllerCheck = 0;
     this.rendererSystem = this.el.sceneEl.systems.renderer;
     this.bindMethods();
+
+    // generic-tracked-controller-controls has the lowest precedence.
+    // We must diable this component if there are more specialized controls components.
+    this.el.addEventListener('controllerconnected', function (evt) {
+      if (evt.detail.name === self.name) { return; }
+      self.wasControllerConnected = true;
+      self.removeEventListeners();
+      self.removeControllersUpdateListener();
+    });
   },
 
   addEventListeners: function () {
@@ -55495,6 +56532,7 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
   },
 
   play: function () {
+    if (this.wasControllerConnected) { return; }
     this.checkIfControllerPresent();
     this.addControllersUpdateListener();
   },
@@ -55507,6 +56545,7 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
   injectTrackedControls: function () {
     var el = this.el;
     var data = this.data;
+
     // Do nothing if tracked-controls already set.
     // Generic controls have the lowest precedence.
     if (this.el.components['tracked-controls']) {
@@ -55557,13 +56596,13 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
   }
 });
 
-},{"../core/component":116,"../utils/bind":184,"../utils/tracked-controls":199}],61:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/bind":190,"../utils/tracked-controls":205}],63:[function(_dereq_,module,exports){
 var geometries = _dereq_('../core/geometry').geometries;
 var geometryNames = _dereq_('../core/geometry').geometryNames;
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
 
-var dummyGeometry = new THREE.Geometry();
+var dummyGeometry = new THREE.BufferGeometry();
 
 /**
  * Geometry component. Combined with material component to make a mesh in 3D object.
@@ -55605,6 +56644,14 @@ module.exports.Component = registerComponent('geometry', {
     } else {
       mesh = new THREE.Mesh();
       mesh.geometry = this.geometry;
+      // Default material if not defined on the entity.
+      if (!this.el.getAttribute('material')) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: Math.random() * 0xFFFFFF,
+          metalness: 0,
+          roughness: 0.5
+        });
+      }
       el.setObject3D('mesh', mesh);
     }
   },
@@ -55636,7 +56683,7 @@ module.exports.Component = registerComponent('geometry', {
   }
 });
 
-},{"../core/component":116,"../core/geometry":117,"../lib/three":164}],62:[function(_dereq_,module,exports){
+},{"../core/component":121,"../core/geometry":122,"../lib/three":169}],64:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
 var utils = _dereq_('../utils/');
@@ -55649,11 +56696,20 @@ module.exports.Component = registerComponent('gltf-model', {
   schema: {type: 'model'},
 
   init: function () {
+    var self = this;
     var dracoLoader = this.system.getDRACOLoader();
+    var meshoptDecoder = this.system.getMeshoptDecoder();
     this.model = null;
     this.loader = new THREE.GLTFLoader();
     if (dracoLoader) {
       this.loader.setDRACOLoader(dracoLoader);
+    }
+    if (meshoptDecoder) {
+      this.ready = meshoptDecoder.then(function (meshoptDecoder) {
+        self.loader.setMeshoptDecoder(meshoptDecoder);
+      });
+    } else {
+      this.ready = Promise.resolve();
     }
   },
 
@@ -55666,15 +56722,17 @@ module.exports.Component = registerComponent('gltf-model', {
 
     this.remove();
 
-    this.loader.load(src, function gltfLoaded (gltfModel) {
-      self.model = gltfModel.scene || gltfModel.scenes[0];
-      self.model.animations = gltfModel.animations;
-      el.setObject3D('mesh', self.model);
-      el.emit('model-loaded', {format: 'gltf', model: self.model});
-    }, undefined /* onProgress */, function gltfFailed (error) {
-      var message = (error && error.message) ? error.message : 'Failed to load glTF model';
-      warn(message);
-      el.emit('model-error', {format: 'gltf', src: src});
+    this.ready.then(function () {
+      self.loader.load(src, function gltfLoaded (gltfModel) {
+        self.model = gltfModel.scene || gltfModel.scenes[0];
+        self.model.animations = gltfModel.animations;
+        el.setObject3D('mesh', self.model);
+        el.emit('model-loaded', {format: 'gltf', model: self.model});
+      }, undefined /* onProgress */, function gltfFailed (error) {
+        var message = (error && error.message) ? error.message : 'Failed to load glTF model';
+        warn(message);
+        el.emit('model-error', {format: 'gltf', src: src});
+      });
     });
   },
 
@@ -55684,7 +56742,7 @@ module.exports.Component = registerComponent('gltf-model', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/":190}],63:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/":196}],65:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -55898,6 +56956,7 @@ module.exports.Component = registerComponent('hand-controls', {
         el.setAttribute('vive-controls', controlConfiguration);
         el.setAttribute('oculus-touch-controls', controlConfiguration);
         el.setAttribute('windows-motion-controls', controlConfiguration);
+        el.setAttribute('hp-mixed-reality-controls', controlConfiguration);
       });
     }
   },
@@ -56107,55 +57166,81 @@ function isViveController (trackedControls) {
   var isVive = controller && (controller.id && controller.id.indexOf('OpenVR ') === 0 ||
     (controller.profiles &&
      controller.profiles[0] &&
-     controller.profiles[0] === 'htc-vive-controller-mv'));
+     controller.profiles[0] === 'htc-vive'));
   return isVive;
 }
 
-},{"../core/component":116}],64:[function(_dereq_,module,exports){
-/* global THREE, XRRigidTransform, XRHand */
+},{"../core/component":121}],66:[function(_dereq_,module,exports){
+/* global THREE, XRRigidTransform */
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
 var trackedControlsUtils = _dereq_('../utils/tracked-controls');
 var checkControllerPresentAndSetup = trackedControlsUtils.checkControllerPresentAndSetup;
 
-var JOINTS_NUMBER = 25;
-
-var LEFT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/unity/left.glb';
-var RIGHT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/unity/right.glb';
+var LEFT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v3/left.glb';
+var RIGHT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v3/right.glb';
 
 var BONE_PREFIX = {
   left: 'b_l_',
   right: 'b_r_'
 };
 
-var BONE_MAPPING = [
+var JOINTS = [
   'wrist',
-  'thumb1',
-  'thumb2',
-  'thumb3',
-  'thumb_null',
-  null,
-  'index1',
-  'index2',
-  'index3',
-  'index_null',
-  null,
-  'middle1',
-  'middle2',
-  'middle3',
-  'middle_null',
-  null,
-  'ring1',
-  'ring2',
-  'ring3',
-  'ring_null',
-  'pinky0',
-  'pinky1',
-  'pinky2',
-  'pinky3',
-  'pinky_null'
+  'thumb-metacarpal',
+  'thumb-phalanx-proximal',
+  'thumb-phalanx-distal',
+  'thumb-tip',
+  'index-finger-metacarpal',
+  'index-finger-phalanx-proximal',
+  'index-finger-phalanx-intermediate',
+  'index-finger-phalanx-distal',
+  'index-finger-tip',
+  'middle-finger-metacarpal',
+  'middle-finger-phalanx-proximal',
+  'middle-finger-phalanx-intermediate',
+  'middle-finger-phalanx-distal',
+  'middle-finger-tip',
+  'ring-finger-metacarpal',
+  'ring-finger-phalanx-proximal',
+  'ring-finger-phalanx-intermediate',
+  'ring-finger-phalanx-distal',
+  'ring-finger-tip',
+  'pinky-finger-metacarpal',
+  'pinky-finger-phalanx-proximal',
+  'pinky-finger-phalanx-intermediate',
+  'pinky-finger-phalanx-distal',
+  'pinky-finger-tip'
 ];
+
+var BONE_MAPPING = {
+  'wrist': 'wrist',
+  'thumb-metacarpal': 'thumb1',
+  'thumb-phalanx-proximal': 'thumb2',
+  'thumb-phalanx-distal': 'thumb3',
+  'thumb-tip': 'thumb_null',
+  'index-finger-metacarpal': 'index0',
+  'index-finger-phalanx-proximal': 'index1',
+  'index-finger-phalanx-intermediate': 'index2',
+  'index-finger-phalanx-distal': 'index3',
+  'index-finger-tip': 'index_null',
+  'middle-finger-metacarpal': 'middle0',
+  'middle-finger-phalanx-proximal': 'middle1',
+  'middle-finger-phalanx-intermediate': 'middle2',
+  'middle-finger-phalanx-distal': 'middle3',
+  'middle-finger-tip': 'middle_null',
+  'ring-finger-metacarpal': 'ring0',
+  'ring-finger-phalanx-proximal': 'ring1',
+  'ring-finger-phalanx-intermediate': 'ring2',
+  'ring-finger-phalanx-distal': 'ring3',
+  'ring-finger-tip': 'ring_null',
+  'pinky-finger-metacarpal': 'pinky0',
+  'pinky-finger-phalanx-proximal': 'pinky1',
+  'pinky-finger-phalanx-intermediate': 'pinky2',
+  'pinky-finger-phalanx-distal': 'pinky3',
+  'pinky-finger-tip': 'pinky_null'
+};
 
 var PINCH_START_DISTANCE = 0.015;
 var PINCH_END_DISTANCE = 0.03;
@@ -56261,19 +57346,28 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
     }
   },
 
+  getBone: function (name) {
+    var bones = this.bones;
+    for (var i = 0; i < bones.length; i++) {
+      if (bones[i].name === name) { return bones[i]; }
+    }
+    return null;
+  },
+
   updateHandMeshModel: function () {
+    var frame = this.el.sceneEl.frame;
     var controller = this.el.components['tracked-controls'] && this.el.components['tracked-controls'].controller;
     var referenceSpace = this.referenceSpace;
+
     if (!controller || !this.mesh || !referenceSpace) { return; }
     this.mesh.visible = false;
-    for (var i = 0; i < controller.hand.length; i++) {
+    for (var inputjoint of controller.hand.values()) {
       var bone;
       var jointPose;
       var jointTransform;
-      if (!controller.hand[i]) { continue; }
-      jointPose = this.el.sceneEl.frame.getJointPose(controller.hand[i], referenceSpace);
-      if (BONE_MAPPING[i] == null) { continue; }
-      bone = this.getBone(BONE_PREFIX[this.data.hand] + BONE_MAPPING[i]);
+      jointPose = frame.getJointPose(inputjoint, referenceSpace);
+      if (!BONE_MAPPING[inputjoint.jointName]) { continue; }
+      bone = this.getBone(BONE_PREFIX[this.data.hand] + BONE_MAPPING[inputjoint.jointName]);
       if (bone != null && jointPose) {
         jointTransform = jointPose.transform;
         this.mesh.visible = true;
@@ -56283,31 +57377,25 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
     }
   },
 
-  getBone: function (name) {
-    var bones = this.bones;
-    for (var i = 0; i < bones.length; i++) {
-      if (bones[i].name === name) { return bones[i]; }
-    }
-    return null;
-  },
-
   updateHandDotsModel: function () {
     var frame = this.el.sceneEl.frame;
     var controller = this.el.components['tracked-controls'] && this.el.components['tracked-controls'].controller;
     var trackedControlsWebXR = this.el.components['tracked-controls-webxr'];
     var referenceSpace = trackedControlsWebXR.system.referenceSpace;
-    for (var i = 0; i < this.jointEls.length; ++i) {
-      var jointEl = this.jointEls[i];
-      jointEl.object3D.visible = !!controller.hand[i];
-      if (controller.hand[i]) {
-        var object3D = jointEl.object3D;
-        var pose = frame.getJointPose(controller.hand[i], referenceSpace);
-        jointEl.object3D.visible = !!pose;
-        if (!pose) { continue; }
-        object3D.matrix.elements = pose.transform.matrix;
-        object3D.matrix.decompose(object3D.position, object3D.rotation, object3D.scale);
-        jointEl.setAttribute('scale', {x: pose.radius, y: pose.radius, z: pose.radius});
-      }
+    var jointEl;
+    var object3D;
+    var jointPose;
+    var i = 0;
+
+    for (var inputjoint of controller.hand.values()) {
+      jointEl = this.jointEls[i++];
+      object3D = jointEl.object3D;
+      jointPose = frame.getJointPose(inputjoint, referenceSpace);
+      jointEl.object3D.visible = !!jointPose;
+      if (!jointPose) { continue; }
+      object3D.matrix.elements = jointPose.transform.matrix;
+      object3D.matrix.decompose(object3D.position, object3D.rotation, object3D.scale);
+      jointEl.setAttribute('scale', {x: jointPose.radius, y: jointPose.radius, z: jointPose.radius});
     }
   },
 
@@ -56323,10 +57411,12 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
       var controller = this.el.components['tracked-controls'] && this.el.components['tracked-controls'].controller;
       var trackedControlsWebXR = this.el.components['tracked-controls-webxr'];
       var referenceSpace = this.referenceSpace || trackedControlsWebXR.system.referenceSpace;
-      if (!controller.hand[XRHand.INDEX_PHALANX_TIP] ||
-          !controller.hand[XRHand.THUMB_PHALANX_TIP]) { return; }
-      var indexTipPose = frame.getJointPose(controller.hand[XRHand.INDEX_PHALANX_TIP], referenceSpace);
-      var thumbTipPose = frame.getJointPose(controller.hand[XRHand.THUMB_PHALANX_TIP], referenceSpace);
+      var indexTip = controller.hand.get('index-finger-tip');
+      var thumbTip = controller.hand.get('thumb-tip');
+      if (!indexTip ||
+          !thumbTip) { return; }
+      var indexTipPose = frame.getJointPose(indexTip, referenceSpace);
+      var thumbTipPose = frame.getJointPose(thumbTip, referenceSpace);
 
       if (!indexTipPose || !thumbTipPose) { return; }
 
@@ -56389,11 +57479,12 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
     controller = this.el.components['tracked-controls'] && this.el.components['tracked-controls'].controller;
     if (!this.el.getObject3D('mesh')) { return; }
     if (!controller || !controller.hand || !controller.hand[0]) {
-      this.el.removeObject3D('mesh');
+      this.el.getObject3D('mesh').visible = false;
     }
   },
 
   initDefaultModel: function () {
+    if (this.el.getObject3D('mesh')) { return; }
     if (this.data.modelStyle === 'dots') {
       this.initDotsModel();
     }
@@ -56406,7 +57497,7 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
   initDotsModel: function () {
      // Add models just once.
     if (this.jointEls.length !== 0) { return; }
-    for (var i = 0; i < JOINTS_NUMBER; ++i) {
+    for (var i = 0; i < JOINTS.length; ++i) {
       var jointEl = this.jointEl = document.createElement('a-entity');
       jointEl.setAttribute('geometry', {
         primitive: 'sphere',
@@ -56426,7 +57517,7 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
 
   onModelLoaded: function () {
     var mesh = this.mesh = this.el.getObject3D('mesh').children[0];
-    var skinnedMesh = this.skinnedMesh = mesh.children[24];
+    var skinnedMesh = this.skinnedMesh = mesh.children[30];
     if (!this.skinnedMesh) { return; }
     this.bones = skinnedMesh.skeleton.bones;
     this.el.removeObject3D('mesh');
@@ -56439,7 +57530,210 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
 });
 
 
-},{"../core/component":116,"../utils/bind":184,"../utils/tracked-controls":199}],65:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/bind":190,"../utils/tracked-controls":205}],67:[function(_dereq_,module,exports){
+var register = _dereq_('../core/component').registerComponent;
+
+module.exports.Component = register('hide-on-enter-ar', {
+  init: function () {
+    var self = this;
+    this.el.sceneEl.addEventListener('enter-vr', function () {
+      if (self.el.sceneEl.is('ar-mode')) {
+        self.el.object3D.visible = false;
+      }
+    });
+    this.el.sceneEl.addEventListener('exit-vr', function () {
+      self.el.object3D.visible = true;
+    });
+  }
+});
+
+},{"../core/component":121}],68:[function(_dereq_,module,exports){
+var bind = _dereq_('../utils/bind');
+var registerComponent = _dereq_('../core/component').registerComponent;
+var THREE = _dereq_('../lib/three');
+
+var trackedControlsUtils = _dereq_('../utils/tracked-controls');
+var checkControllerPresentAndSetup = trackedControlsUtils.checkControllerPresentAndSetup;
+var emitIfAxesChanged = trackedControlsUtils.emitIfAxesChanged;
+var onButtonEvent = trackedControlsUtils.onButtonEvent;
+
+// See Profiles Registry:
+// https://github.com/immersive-web/webxr-input-profiles/tree/master/packages/registry
+// TODO: Add a more robust system for deriving gamepad name.
+var GAMEPAD_ID = 'hp-mixed-reality';
+
+var HP_MIXEDL_REALITY_MODEL_GLB_BASE_URL = 'https://cdn.aframe.io/controllers/hp/mixed-reality/';
+
+var HP_MIXED_REALITY_POSITION_OFFSET = {x: 0, y: 0, z: 0.06};
+var HP_MIXED_REALITY_ROTATION_OFFSET = {_x: Math.PI / 4, _y: 0, _z: 0, _order: 'XYZ'};
+
+/**
+ * Button IDs:
+ * 0 - trigger
+ * 1 - grip
+ * 3 - X / A
+ * 4 - Y / B
+ *
+ * Axis:
+ * 2 - joystick x axis
+ * 3 - joystick y axis
+ */
+var INPUT_MAPPING_WEBXR = {
+  left: {
+    axes: {touchpad: [2, 3]},
+    buttons: ['trigger', 'grip', 'none', 'thumbstick', 'xbutton', 'ybutton']
+  },
+  right: {
+    axes: {touchpad: [2, 3]},
+    buttons: ['trigger', 'grip', 'none', 'thumbstick', 'abutton', 'bbutton']
+  }
+};
+
+/**
+ * HP Mixed Reality Controls
+ */
+module.exports.Component = registerComponent('hp-mixed-reality-controls', {
+  schema: {
+    hand: {default: 'none'},
+    model: {default: true},
+    orientationOffset: {type: 'vec3'}
+  },
+
+  mapping: INPUT_MAPPING_WEBXR,
+
+  init: function () {
+    var self = this;
+    this.controllerPresent = false;
+    this.lastControllerCheck = 0;
+    this.onButtonChanged = bind(this.onButtonChanged, this);
+    this.onButtonDown = function (evt) { onButtonEvent(evt.detail.id, 'down', self, self.data.hand); };
+    this.onButtonUp = function (evt) { onButtonEvent(evt.detail.id, 'up', self, self.data.hand); };
+    this.onButtonTouchEnd = function (evt) { onButtonEvent(evt.detail.id, 'touchend', self, self.data.hand); };
+    this.onButtonTouchStart = function (evt) { onButtonEvent(evt.detail.id, 'touchstart', self, self.data.hand); };
+    this.previousButtonValues = {};
+    this.rendererSystem = this.el.sceneEl.systems.renderer;
+
+    this.bindMethods();
+  },
+
+  update: function () {
+    var data = this.data;
+    this.controllerIndex = data.hand === 'right' ? 0 : data.hand === 'left' ? 1 : 2;
+  },
+
+  play: function () {
+    this.checkIfControllerPresent();
+    this.addControllersUpdateListener();
+  },
+
+  pause: function () {
+    this.removeEventListeners();
+    this.removeControllersUpdateListener();
+  },
+
+  bindMethods: function () {
+    this.onModelLoaded = bind(this.onModelLoaded, this);
+    this.onControllersUpdate = bind(this.onControllersUpdate, this);
+    this.checkIfControllerPresent = bind(this.checkIfControllerPresent, this);
+    this.removeControllersUpdateListener = bind(this.removeControllersUpdateListener, this);
+    this.onAxisMoved = bind(this.onAxisMoved, this);
+  },
+
+  addEventListeners: function () {
+    var el = this.el;
+    el.addEventListener('buttonchanged', this.onButtonChanged);
+    el.addEventListener('buttondown', this.onButtonDown);
+    el.addEventListener('buttonup', this.onButtonUp);
+    el.addEventListener('touchstart', this.onButtonTouchStart);
+    el.addEventListener('touchend', this.onButtonTouchEnd);
+    el.addEventListener('axismove', this.onAxisMoved);
+    el.addEventListener('model-loaded', this.onModelLoaded);
+    this.controllerEventsActive = true;
+  },
+
+  removeEventListeners: function () {
+    var el = this.el;
+    el.removeEventListener('buttonchanged', this.onButtonChanged);
+    el.removeEventListener('buttondown', this.onButtonDown);
+    el.removeEventListener('buttonup', this.onButtonUp);
+    el.removeEventListener('touchstart', this.onButtonTouchStart);
+    el.removeEventListener('touchend', this.onButtonTouchEnd);
+    el.removeEventListener('axismove', this.onAxisMoved);
+    el.removeEventListener('model-loaded', this.onModelLoaded);
+    this.controllerEventsActive = false;
+  },
+
+  checkIfControllerPresent: function () {
+    var data = this.data;
+    checkControllerPresentAndSetup(this, GAMEPAD_ID,
+                                   {index: this.controllerIndex, hand: data.hand});
+  },
+
+  injectTrackedControls: function () {
+    var el = this.el;
+    var data = this.data;
+
+    el.setAttribute('tracked-controls', {
+      // TODO: verify expected behavior between reserved prefixes.
+      idPrefix: GAMEPAD_ID,
+      hand: data.hand,
+      controller: this.controllerIndex,
+      orientationOffset: data.orientationOffset
+    });
+
+    // Load model.
+    if (!this.data.model) { return; }
+    this.el.setAttribute('gltf-model', HP_MIXEDL_REALITY_MODEL_GLB_BASE_URL + this.data.hand + '.glb');
+  },
+
+  addControllersUpdateListener: function () {
+    this.el.sceneEl.addEventListener('controllersupdated', this.onControllersUpdate, false);
+  },
+
+  removeControllersUpdateListener: function () {
+    this.el.sceneEl.removeEventListener('controllersupdated', this.onControllersUpdate, false);
+  },
+
+  onControllersUpdate: function () {
+    // Note that due to gamepadconnected event propagation issues, we don't rely on events.
+    this.checkIfControllerPresent();
+  },
+
+  onButtonChanged: function (evt) {
+    var button = this.mapping[this.data.hand].buttons[evt.detail.id];
+    var analogValue;
+
+    if (!button) { return; }
+    if (button === 'trigger') {
+      analogValue = evt.detail.state.value;
+      console.log('analog value of trigger press: ' + analogValue);
+    }
+
+    // Pass along changed event with button state, using button mapping for convenience.
+    this.el.emit(button + 'changed', evt.detail.state);
+  },
+
+  onModelLoaded: function (evt) {
+    var controllerObject3D = evt.detail.model;
+
+    if (!this.data.model) { return; }
+
+    controllerObject3D.position.copy(HP_MIXED_REALITY_POSITION_OFFSET);
+    controllerObject3D.rotation.copy(HP_MIXED_REALITY_ROTATION_OFFSET);
+
+    this.el.emit('controllermodelready', {
+      name: 'hp-mixed-reality-controls',
+      model: this.data.model,
+      rayOrigin: new THREE.Vector3(0, 0, 0)
+    });
+  },
+
+  onAxisMoved: function (evt) {
+    emitIfAxesChanged(this, this.mapping.axes, evt);
+  }
+});
+
+},{"../core/component":121,"../lib/three":169,"../utils/bind":190,"../utils/tracked-controls":205}],69:[function(_dereq_,module,exports){
 _dereq_('./animation');
 _dereq_('./camera');
 _dereq_('./cursor');
@@ -56450,6 +57744,8 @@ _dereq_('./generic-tracked-controller-controls');
 _dereq_('./gltf-model');
 _dereq_('./hand-tracking-controls');
 _dereq_('./hand-controls');
+_dereq_('./hide-on-enter-ar');
+_dereq_('./hp-mixed-reality-controls');
 _dereq_('./layer');
 _dereq_('./laser-controls');
 _dereq_('./light');
@@ -56478,6 +57774,7 @@ _dereq_('./vive-focus-controls');
 _dereq_('./wasd-controls');
 _dereq_('./windows-motion-controls');
 
+_dereq_('./scene/ar-hit-test');
 _dereq_('./scene/background');
 _dereq_('./scene/debug');
 _dereq_('./scene/device-orientation-permission-ui');
@@ -56499,7 +57796,7 @@ _dereq_('./readyplayerme-avatar');
 _dereq_('./remote-hand-controls');
 _dereq_('./teleport-controls');
 
-},{"./absolute-position-listener":52,"./absolute-rotation-listener":53,"./animation":54,"./camera":55,"./copy-material":56,"./cursor":57,"./daydream-controls":58,"./gearvr-controls":59,"./generic-tracked-controller-controls":60,"./geometry":61,"./gltf-model":62,"./hand-controls":63,"./hand-tracking-controls":64,"./laser-controls":66,"./layer":67,"./light":68,"./line":69,"./link":70,"./look-controls":71,"./magicleap-controls":72,"./material":73,"./mediastream-sound":74,"./obj-model":75,"./oculus-go-controls":76,"./oculus-touch-controls":77,"./position":78,"./raycaster":79,"./readyplayerme-avatar":80,"./remote-hand-controls":81,"./rotation":82,"./scale":83,"./scene/background":84,"./scene/debug":85,"./scene/device-orientation-permission-ui":86,"./scene/embedded":87,"./scene/fog":88,"./scene/inspector":89,"./scene/keyboard-shortcuts":90,"./scene/pool":91,"./scene/screenshot":92,"./scene/stats":93,"./scene/vr-mode-ui":94,"./shadow":95,"./sound":96,"./teleport-controls":97,"./text":98,"./tracked-controls":101,"./tracked-controls-webvr":99,"./tracked-controls-webxr":100,"./valve-index-controls":102,"./visible":103,"./vive-controls":104,"./vive-focus-controls":105,"./wasd-controls":106,"./windows-motion-controls":107}],66:[function(_dereq_,module,exports){
+},{"./absolute-position-listener":54,"./absolute-rotation-listener":55,"./animation":56,"./camera":57,"./copy-material":58,"./cursor":59,"./daydream-controls":60,"./gearvr-controls":61,"./generic-tracked-controller-controls":62,"./geometry":63,"./gltf-model":64,"./hand-controls":65,"./hand-tracking-controls":66,"./hide-on-enter-ar":67,"./hp-mixed-reality-controls":68,"./laser-controls":70,"./layer":71,"./light":72,"./line":73,"./link":74,"./look-controls":75,"./magicleap-controls":76,"./material":77,"./mediastream-sound":78,"./obj-model":79,"./oculus-go-controls":80,"./oculus-touch-controls":81,"./position":82,"./raycaster":83,"./readyplayerme-avatar":84,"./remote-hand-controls":85,"./rotation":86,"./scale":87,"./scene/ar-hit-test":88,"./scene/background":89,"./scene/debug":90,"./scene/device-orientation-permission-ui":91,"./scene/embedded":92,"./scene/fog":93,"./scene/inspector":94,"./scene/keyboard-shortcuts":95,"./scene/pool":96,"./scene/screenshot":97,"./scene/stats":98,"./scene/vr-mode-ui":99,"./shadow":100,"./sound":101,"./teleport-controls":102,"./text":103,"./tracked-controls":106,"./tracked-controls-webvr":104,"./tracked-controls-webxr":105,"./valve-index-controls":107,"./visible":108,"./vive-controls":109,"./vive-focus-controls":110,"./wasd-controls":111,"./windows-motion-controls":112}],70:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var utils = _dereq_('../utils/');
 
@@ -56520,6 +57817,7 @@ registerComponent('laser-controls', {
     // Set all controller models.
     el.setAttribute('daydream-controls', controlsConfiguration);
     el.setAttribute('gearvr-controls', controlsConfiguration);
+    el.setAttribute('hp-mixed-reality-controls', controlsConfiguration);
     el.setAttribute('magicleap-controls', controlsConfiguration);
     el.setAttribute('oculus-go-controls', controlsConfiguration);
     el.setAttribute('oculus-touch-controls', controlsConfiguration);
@@ -56588,6 +57886,11 @@ registerComponent('laser-controls', {
       cursor: {downEvents: ['triggerdown'], upEvents: ['triggerup']}
     },
 
+    'hp-mixed-reality-controls': {
+      cursor: {downEvents: ['triggerdown'], upEvents: ['triggerup']},
+      raycaster: {origin: {x: 0, y: 0, z: 0}}
+    },
+
     'magicleap-controls': {
       cursor: {downEvents: ['trackpaddown', 'triggerdown'], upEvents: ['trackpadup', 'triggerup']}
     },
@@ -56621,7 +57924,7 @@ registerComponent('laser-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/":190}],67:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196}],71:[function(_dereq_,module,exports){
 /* global THREE, XRRigidTransform, XRWebGLBinding */
 var registerComponent = _dereq_('../core/component').registerComponent;
 var utils = _dereq_('../utils/');
@@ -57029,15 +58332,19 @@ function blitTexture (gl, texture, subImage, textureEl) {
   gl.deleteFramebuffer(xrReadFramebuffer);
 }
 
-},{"../core/component":116,"../utils/":190}],68:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196}],72:[function(_dereq_,module,exports){
 var bind = _dereq_('../utils/bind');
-var diff = _dereq_('../utils').diff;
+var utils = _dereq_('../utils');
+var diff = utils.diff;
 var debug = _dereq_('../utils/debug');
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
 
 var degToRad = THREE.Math.degToRad;
 var warn = debug('components:light:warn');
+var CubeLoader = new THREE.CubeTextureLoader();
+
+var probeCache = {};
 
 /**
  * Light component.
@@ -57045,15 +58352,16 @@ var warn = debug('components:light:warn');
 module.exports.Component = registerComponent('light', {
   schema: {
     angle: {default: 60, if: {type: ['spot']}},
-    color: {type: 'color'},
+    color: {type: 'color', if: {type: ['ambient', 'directional', 'hemisphere', 'point', 'spot']}},
+    envMap: {default: '', if: {type: ['probe']}},
     groundColor: {type: 'color', if: {type: ['hemisphere']}},
     decay: {default: 1, if: {type: ['point', 'spot']}},
     distance: {default: 0.0, min: 0, if: {type: ['point', 'spot']}},
-    intensity: {default: 1.0, min: 0, if: {type: ['ambient', 'directional', 'hemisphere', 'point', 'spot']}},
+    intensity: {default: 1.0, min: 0, if: {type: ['ambient', 'directional', 'hemisphere', 'point', 'spot', 'probe']}},
     penumbra: {default: 0, min: 0, max: 1, if: {type: ['spot']}},
     type: {
       default: 'directional',
-      oneOf: ['ambient', 'directional', 'hemisphere', 'point', 'spot'],
+      oneOf: ['ambient', 'directional', 'hemisphere', 'point', 'spot', 'probe'],
       schemaChange: true
     },
     target: {type: 'selector', if: {type: ['spot', 'directional']}},
@@ -57136,6 +58444,10 @@ module.exports.Component = registerComponent('light', {
             }
             break;
           }
+
+          case 'envMap':
+            this.updateProbeMap(data, light);
+            break;
 
           case 'castShadow':
           case 'shadowBias':
@@ -57295,11 +58607,45 @@ module.exports.Component = registerComponent('light', {
         return light;
       }
 
+      case 'probe': {
+        light = new THREE.LightProbe();
+        this.updateProbeMap(data, light);
+        return light;
+      }
+
       default: {
         warn('%s is not a valid light type. ' +
            'Choose from ambient, directional, hemisphere, point, spot.', type);
       }
     }
+  },
+
+  /**
+   * Generate the spherical harmonics for the LightProbe from a cube map
+   */
+  updateProbeMap: function (data, light) {
+    if (!data.envMap) {
+      // reset parameters if no map
+      light.copy(new THREE.LightProbe());
+    }
+
+    if (probeCache[data.envMap] instanceof window.Promise) {
+      probeCache[data.envMap].then(function (tempLightProbe) {
+        light.copy(tempLightProbe);
+      });
+    }
+    if (probeCache[data.envMap] instanceof THREE.LightProbe) {
+      light.copy(probeCache[data.envMap]);
+    }
+    probeCache[data.envMap] = new window.Promise(function (resolve) {
+      utils.srcLoader.validateCubemapSrc(data.envMap, function loadEnvMap (urls) {
+        CubeLoader.load(urls, function (cube) {
+          var tempLightProbe = THREE.LightProbeGenerator.fromCubeTexture(cube);
+          probeCache[data.envMap] = tempLightProbe;
+          light.copy(tempLightProbe);
+        });
+      });
+    });
   },
 
   onSetTarget: function (targetEl, light) {
@@ -57318,7 +58664,7 @@ module.exports.Component = registerComponent('light', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils":190,"../utils/bind":184,"../utils/debug":186}],69:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils":196,"../utils/bind":190,"../utils/debug":192}],73:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -57396,7 +58742,7 @@ function isEqualVec3 (a, b) {
   return (a.x === b.x && a.y === b.y && a.z === b.z);
 }
 
-},{"../core/component":116}],70:[function(_dereq_,module,exports){
+},{"../core/component":121}],74:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var registerShader = _dereq_('../core/shader').registerShader;
 var THREE = _dereq_('../lib/three');
@@ -57768,7 +59114,7 @@ registerShader('portal', {
 });
 /* eslint-enable */
 
-},{"../core/component":116,"../core/shader":126,"../lib/three":164}],71:[function(_dereq_,module,exports){
+},{"../core/component":121,"../core/shader":131,"../lib/three":169}],75:[function(_dereq_,module,exports){
 /* global DeviceOrientationEvent  */
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
@@ -57819,7 +59165,7 @@ module.exports.Component = registerComponent('look-controls', {
     };
 
     // Call enter VR handler if the scene has entered VR before the event listeners attached.
-    if (this.el.sceneEl.is('vr-mode')) { this.onEnterVR(); }
+    if (this.el.sceneEl.is('vr-mode') || this.el.sceneEl.is('ar-mode')) { this.onEnterVR(); }
   },
 
   setupMagicWindowControls: function () {
@@ -57990,8 +59336,8 @@ module.exports.Component = registerComponent('look-controls', {
       var pose;
       var sceneEl = this.el.sceneEl;
 
-      // In VR mode, THREE is in charge of updating the camera pose.
-      if (sceneEl.is('vr-mode') && sceneEl.checkHeadsetConnected()) {
+      // In VR or AR mode, THREE is in charge of updating the camera pose.
+      if ((sceneEl.is('vr-mode') || sceneEl.is('ar-mode')) && sceneEl.checkHeadsetConnected()) {
         // With WebXR THREE applies headset pose to the object3D matrixWorld internally.
         // Reflect values back on position, rotation, scale for getAttribute to return the expected values.
         if (sceneEl.hasWebXR) {
@@ -58072,7 +59418,7 @@ module.exports.Component = registerComponent('look-controls', {
    */
   onMouseDown: function (evt) {
     var sceneEl = this.el.sceneEl;
-    if (!this.data.enabled || !this.data.mouseEnabled || (sceneEl.is('vr-mode') && sceneEl.checkHeadsetConnected())) { return; }
+    if (!this.data.enabled || !this.data.mouseEnabled || ((sceneEl.is('vr-mode') || sceneEl.is('ar-mode')) && sceneEl.checkHeadsetConnected())) { return; }
     // Handle only primary button.
     if (evt.button !== 0) { return; }
 
@@ -58120,7 +59466,8 @@ module.exports.Component = registerComponent('look-controls', {
   onTouchStart: function (evt) {
     if (evt.touches.length !== 1 ||
         !this.data.touchEnabled ||
-        this.el.sceneEl.is('vr-mode')) { return; }
+        this.el.sceneEl.is('vr-mode') ||
+        this.el.sceneEl.is('ar-mode')) { return; }
     this.touchStart = {
       x: evt.touches[0].pageX,
       y: evt.touches[0].pageY
@@ -58254,7 +59601,7 @@ module.exports.Component = registerComponent('look-controls', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/":190}],72:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/":196}],76:[function(_dereq_,module,exports){
 var bind = _dereq_('../utils/bind');
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -58434,7 +59781,7 @@ module.exports.Component = registerComponent('magicleap-controls', {
 
 });
 
-},{"../core/component":116,"../utils/bind":184,"../utils/tracked-controls":199}],73:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/bind":190,"../utils/tracked-controls":205}],77:[function(_dereq_,module,exports){
 /* global Promise */
 var utils = _dereq_('../utils/');
 var component = _dereq_('../core/component');
@@ -58705,7 +60052,7 @@ function disposeMaterial (material, system) {
   system.unregisterMaterial(material);
 }
 
-},{"../core/component":116,"../core/shader":126,"../lib/three":164,"../utils/":190}],74:[function(_dereq_,module,exports){
+},{"../core/component":121,"../core/shader":131,"../lib/three":169,"../utils/":196}],78:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
 
@@ -58857,7 +60204,7 @@ module.exports.Component = registerComponent('mediastream-sound', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164}],75:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169}],79:[function(_dereq_,module,exports){
 var debug = _dereq_('../utils/debug');
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
@@ -58960,7 +60307,7 @@ module.exports.Component = registerComponent('obj-model', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/debug":186}],76:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/debug":192}],80:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -59164,7 +60511,7 @@ module.exports.Component = registerComponent('oculus-go-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],77:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],81:[function(_dereq_,module,exports){
 var bind = _dereq_('../utils/bind');
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
@@ -59509,7 +60856,7 @@ module.exports.Component = registerComponent('oculus-touch-controls', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],78:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],82:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 module.exports.Component = registerComponent('position', {
@@ -59527,7 +60874,7 @@ module.exports.Component = registerComponent('position', {
   }
 });
 
-},{"../core/component":116}],79:[function(_dereq_,module,exports){
+},{"../core/component":121}],83:[function(_dereq_,module,exports){
 /* global MutationObserver */
 
 var registerComponent = _dereq_('../core/component').registerComponent;
@@ -59966,7 +61313,7 @@ function copyArray (a, b) {
   }
 }
 
-},{"../core/component":116,"../lib/three":164,"../utils/":190}],80:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/":196}],84:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -60113,7 +61460,7 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
   }
 });
 
-},{"../core/component":116}],81:[function(_dereq_,module,exports){
+},{"../core/component":121}],85:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -60282,7 +61629,7 @@ module.exports.Component = registerComponent('remote-hand-controls', {
   }
 });
 
-},{"../core/component":116}],82:[function(_dereq_,module,exports){
+},{"../core/component":121}],86:[function(_dereq_,module,exports){
 var degToRad = _dereq_('../lib/three').Math.degToRad;
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -60305,7 +61652,7 @@ module.exports.Component = registerComponent('rotation', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164}],83:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169}],87:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 // Avoids triggering a zero-determinant which makes object3D matrix non-invertible.
@@ -60332,24 +61679,709 @@ module.exports.Component = registerComponent('scale', {
   }
 });
 
-},{"../core/component":116}],84:[function(_dereq_,module,exports){
-/* global THREE */
+},{"../core/component":121}],88:[function(_dereq_,module,exports){
+/* global ImageData, Map, Set */
+var arrowURL = 'data:image/webp;base64,UklGRkQHAABXRUJQVlA4WAoAAAAQAAAA/wEA/wEAQUxQSL0DAAARDzD/ERGCjrY9sYYFfgo6aa1kJ7K0w9Lo3AadLSVeFxevQwj5kuM8RfR/Atw/C0+ozB/oUBrloFZs6ElSW88j1KA4yExNWQaqRZquIDF0JYmlq0hAuUDTFu66tng3teW7pa3cQf1V1edvur54M/Slm6Wv3Gx9zw0MXlQLntcsBN6wkHjTQuYtC4W3LTw8mGRVG57TbAROtxHfZNhInGkjc5aNwtk2Hg6Mvki14k+NkZzCwQgCxalcAv3kddRTPI1DcUrXId1FLf1uHpzaQz4tquhZVLlKesbVpqKeTj0n0F5PpXDlFN9UqmhalL/ImuZFo6KmToWLoKlddMprqlS8cKovBvHo2kTiFV2LN4msaxKZl3QNiair8xYRdDWivIvXVXmbcMqJ51UebZuFXxZt6xd4laxtciqRtA3Cv0nU1t+kEUFbI8JvCa+tvkm3FDlO/W+OR99+kWEp/YYo+tYfTVnf/K8cE/F///3vv//993eeL+a+uvjawLcX3xjYvJotBFY3kVjTRGFtE+BU2AiMbiQyhpHMWEYeBozAH5qNBYRDB5KBCaTDBKKBAZTDBoKBDjwHAN5ABeCJBsAZcAAC0YHHxAYSMYBiYgGZWEA2MYFCbCCZGAAIANFEB+AnYgMQTDQAYSJ2AN5EBZAm4gDgTDgAeSIu4DGygTIRN1CMLOCZiACykQlg4jsAycgA8AO+BxCNdJyDkcbwRirDGXGnx8w+FDPrkM3MQ9JQZMYhiiwV/RDMtIM3U1/DmXHUo+IR2kSR2ToWkQ1NIn2qf2J8LCqJKiDUiSADHY3whirhdHgZ94HKaR97PhE+twEUJUFoAcgyTct8hfSxSkShASDKdMJ/ritKHwgyQ0sD4D/miCxU5SbhOOUDTnZpccCjYP/i0bZ/8bAgtVGEoGapWIQXyzKVKLwgNJFk2rtMIgoNRJlOZF7SNSSyUEeQmbxBFKEmtYjEe8S8zOZ1AkJVCmS88FJOtF40Ksg4oUaFiygk3C8qlTVNyl8UTevCUdAE2t14PfVqU1FPp57TopKeQZWromddTQp6QOfTOEQt/ZDuipZ11w/wOiqO8dRORcc6BQEkDQMClaHcn5wV9yLbxsNZNgpn2sicYSNxuo34Js1G4FQbnuNsOPa28PCWhcKbFjJvWEi8ZiHwqgXPcxbc5db33Cx95WboSzddX7yp+vyN0+eul7ZyN7Xlu64t3jVt4c5pc4JLV5EYupJE0xUknC4nOjVlmaYpyLit53HCQ0+ScnqceNcS5dzUkd0/CwMAVlA4IGADAAAQXwCdASoAAgACP8ne6Wy/tjCpqJ/IA/A5CWlu4XYBG/Pz8AfwD8APz//f3v8E1fuHZnxKYACtfuHZnxKYACrYTb5mOslhxu843ecbvON3nG7zjd3a0VCn7G1MABVxwH/Xd25gAK1+4dmfEpe2+PHhQaj75++riG6FuYACtfuHZnxKYACRrK3q9xO8Ss3uWKnMhs/rDF1hi6wxdYYusMXWGI5QRcCFDZog5OgqNlse1NDuz/UoFa/cOzPiUwAEsAOK4/nu5eZHK2tlXxJfNYlMABWv3Dsz4bvNJ5YA/LtxJ38SmAArX7h2Z8Sk5vdZUYv7mZPiUwAFa/cOzPh21s5OgZxf1mfEpemRyFr/rM+JS9noA/LtxJ38SmAAlUJIotzAASn6TjdhK+D3Dsz4dyvB7h2Z8O2tnJ0DOL+sz4lL2nKLT4lL/+iSLOocxq639w7M34MNZdm55uJ8v8ra2cpVZnxKTq2F3PN/cNksAfl24k7+JTAASqrD37h2Z7b1W+VtbOUqsz4lJ1bC7nm/uGyWAPy7cSd/EpgAJVVh79w7M9t6rfK2tnKVWZ8Sk6thdzzf3DZLAH5duJO/iUwAEqqw9+4dme29VvlbWzlKrM+JSdWwu55v7hslgD8u3EnfxKYACVVYe/cOzPbeq3ytrZylVme0kYJ8557FLerqFrzIbPrrf3DZLAH5duJO/iUvaVMS9BoaF4p7pSDFTP1XMyfElelrM0DOL+sz4eBJ13nV1OppBGPuKb4YzXQgq9uH19uS/0+JS9t9fr6ZUlQBelDG6GMgq97otb5QMPJwtKyBTbFp8Sl7b6/X0ykkawEOsgdiE6Fi0vb/Eve6xkwsmug0Z4nGNHQO8839bpTsjpz7SWIJxKagvd1QWMa6FYT1KEw3j4XDT6vJ9Xk+nyfT5Pq8n1eEmk5dinMM/9Fcfz4Z3Dsz3KD2dw7LxBRxKrqUUGQPH/7zxr1KIfNpLEJ0MZB2ITM/0Z2EFoh12NlXnEcpYcbvON3nG7zjd5xu84vfcNIAAP7+y8ceyzbVxkakPYY4lcr72fqOnDwipv+yxC71wAADBrjKnAAAAAAAAAAAAAAw7oNGHttqWONcoFN/2WIDc2pa6WVFtFYROlsaMaTXdcOjXHz93+YxAglKa4AAAAA=';
+var register = _dereq_('../../core/component').registerComponent;
+var THREE = _dereq_('../../lib/three');
+var CAM_LAYER = 21;
+
+var applyPose = (function () {
+  var tempQuaternion = new THREE.Quaternion();
+  var tempVec3 = new THREE.Vector3();
+  function applyPose (pose, object3D, offset) {
+    object3D.position.copy(pose.transform.position);
+    object3D.quaternion.copy(pose.transform.orientation);
+
+    tempVec3.copy(offset);
+    tempQuaternion.copy(pose.transform.orientation);
+    tempVec3.applyQuaternion(tempQuaternion);
+    object3D.position.sub(tempVec3);
+  }
+  return applyPose;
+}());
+
+applyPose.tempFakePose = {
+  transform: {
+    orientation: new THREE.Quaternion(),
+    position: new THREE.Vector3()
+  }
+};
+
+/**
+ * Class to handle hit-test from a single source
+ *
+ * For a normal space provide it as a space option
+ * new HitTest(renderer, {
+ *   space: viewerSpace
+ * });
+ *
+ * this is also useful for the targetRaySpace of an XRInputSource
+ *
+ * It can also describe a transient input source like so:
+ *
+ * var profileToSupport = 'generic-touchscreen';
+ * var transientHitTest = new HitTest(renderer, {
+ *   profile: profileToSupport
+ * });
+ *
+ * Where the profile matches an item in a type of controller, profiles matching 'generic-touchscreen'
+ * will always be a transient input and as of 08/2021 all transient inputs are 'generic-touchscreen'
+ *
+ * @param {WebGLRenderer} renderer THREE.JS Renderer
+ * @param {} hitTestSourceDetails The source information either as the information for a transient hit-test or a regular hit-test
+ */
+function HitTest (renderer, hitTestSourceDetails) {
+  this.renderer = renderer;
+  this.xrHitTestSource = null;
+
+  renderer.xr.addEventListener('sessionend', function () {
+    this.xrHitTestSource = null;
+  }.bind(this));
+  renderer.xr.addEventListener('sessionstart', function () {
+    this.sessionStart(hitTestSourceDetails);
+  }.bind(this));
+
+  if (this.renderer.xr.isPresenting) {
+    this.sessionStart(hitTestSourceDetails);
+  }
+}
+
+HitTest.prototype.previousFrameAnchors = new Set();
+HitTest.prototype.anchorToObject3D = new Map();
+
+HitTest.prototype.sessionStart = function sessionStart (hitTestSourceDetails) {
+  this.session = this.renderer.xr.getSession();
+  try {
+    if (hitTestSourceDetails.space) {
+      this.session.requestHitTestSource(hitTestSourceDetails)
+      .then(function (xrHitTestSource) {
+        this.xrHitTestSource = xrHitTestSource;
+      }.bind(this));
+    } else if (hitTestSourceDetails.profile) {
+      this.session.requestHitTestSourceForTransientInput(hitTestSourceDetails)
+      .then(function (xrHitTestSource) {
+        this.xrHitTestSource = xrHitTestSource;
+        this.transient = true;
+      }.bind(this));
+    }
+  } catch (e) {
+    console.warn(e.message);
+    console.warn('Cannot requestHitTestSource Are you missing: webxr="optionalFeatures: hit-test;" from <a-scene>?');
+  }
+};
+
+/**
+ * Turns the last hit test into an anchor, the provided Object3D will have it's
+ * position update to track the anchor.
+ *
+ * @param {Object3D} object3D object to track
+ * @param {Vector3} offset offset of the object from the origin that gets subtracted
+ * @returns
+ */
+HitTest.prototype.anchorFromLastHitTestResult = function (object3D, offset) {
+  var hitTest = this.lastHitTest;
+
+  if (!hitTest) { return; }
+
+  var object3DOptions = {
+    object3D: object3D,
+    offset: offset
+  };
+
+  Array.from(this.anchorToObject3D.entries())
+  .forEach(function (entry) {
+    var entryObject = entry[1].object3D;
+    var anchor = entry[0];
+    if (entryObject === object3D) {
+      this.anchorToObject3D.delete(anchor);
+      anchor.delete();
+    }
+  }.bind(this));
+
+  if (hitTest.createAnchor) {
+    hitTest.createAnchor()
+    .then(function (anchor) {
+      this.anchorToObject3D.set(anchor, object3DOptions);
+    }.bind(this))
+    .catch(function (e) {
+      console.warn(e.message);
+      console.warn('Cannot create anchor, are you missing: webxr="optionalFeatures: anchors;" from <a-scene>?');
+    });
+  }
+};
+
+HitTest.prototype.doHit = function doHit (frame) {
+  if (!this.renderer.xr.isPresenting) { return; }
+  var refSpace = this.renderer.xr.getReferenceSpace();
+  var xrViewerPose = frame.getViewerPose(refSpace);
+  var hitTestResults;
+  var results;
+
+  if (this.xrHitTestSource && xrViewerPose) {
+    if (this.transient) {
+      hitTestResults = frame.getHitTestResultsForTransientInput(this.xrHitTestSource);
+      if (hitTestResults.length > 0) {
+        results = hitTestResults[0].results;
+        if (results.length > 0) {
+          this.lastHitTest = results[0];
+          return results[0].getPose(refSpace);
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } else {
+      hitTestResults = frame.getHitTestResults(this.xrHitTestSource);
+      if (hitTestResults.length > 0) {
+        this.lastHitTest = hitTestResults[0];
+        return hitTestResults[0].getPose(refSpace);
+      } else {
+        return false;
+      }
+    }
+  }
+};
+
+// static function
+HitTest.updateAnchorPoses = function (frame, refSpace) {
+  // If tracked anchors isn't defined because it's not supported then just use the empty set
+  var trackedAnchors = frame.trackedAnchors || HitTest.prototype.previousFrameAnchors;
+
+  HitTest.prototype.previousFrameAnchors.forEach(function (anchor) {
+    // Handle anchor tracking loss - `anchor` was present
+    // in the present frame but is no longer tracked.
+    if (!trackedAnchors.has(anchor)) {
+      HitTest.prototype.anchorToObject3D.delete(anchor);
+    }
+  });
+
+  trackedAnchors.forEach(function (anchor) {
+    var anchorPose;
+    var object3DOptions;
+    var offset;
+    var object3D;
+
+    try {
+      // Query most recent pose of the anchor relative to some reference space:
+      anchorPose = frame.getPose(anchor.anchorSpace, refSpace);
+    } catch (e) {
+      // This will fail if the anchor has been deleted that frame
+    }
+
+    if (anchorPose) {
+      object3DOptions = HitTest.prototype.anchorToObject3D.get(anchor);
+      offset = object3DOptions.offset;
+      object3D = object3DOptions.object3D;
+
+      applyPose(anchorPose, object3D, offset);
+    }
+  });
+};
+
+var hitTestCache;
+module.exports.Component = register('ar-hit-test', {
+  schema: {
+    target: { type: 'selector' },
+    enabled: { default: true },
+    src: {
+      default: arrowURL,
+      type: 'map'
+    },
+    type: {
+      default: 'footprint',
+      oneOf: ['footprint', 'map']
+    },
+    footprintDepth: {
+      default: 0.1
+    }
+  },
+
+  init: function () {
+    this.hitTest = null;
+    this.imageDataArray = new Uint8ClampedArray(512 * 512 * 4);
+    this.imageData = new ImageData(this.imageDataArray, 512, 512);
+
+    this.textureCache = new Map();
+
+    this.orthoCam = new THREE.OrthographicCamera();
+    this.orthoCam.layers.set(CAM_LAYER);
+    this.textureTarget = new THREE.WebGLRenderTarget(512, 512, {});
+    this.basicMaterial = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      side: THREE.DoubleSide
+    });
+    this.canvas = document.createElement('canvas');
+    this.context = this.canvas.getContext('2d');
+    this.context.imageSmoothingEnabled = false;
+    this.canvas.width = 512;
+    this.canvas.height = 512;
+    this.canvasTexture = new THREE.CanvasTexture(this.canvas, {
+      alpha: true
+    });
+    this.canvasTexture.flipY = false;
+
+    // Update WebXR to support hit-test and anchors
+    var webxrData = this.el.getAttribute('webxr');
+    var optionalFeaturesArray = webxrData.optionalFeatures;
+    if (
+      !optionalFeaturesArray.includes('hit-test') ||
+      !optionalFeaturesArray.includes('anchors')
+    ) {
+      optionalFeaturesArray.push('hit-test');
+      optionalFeaturesArray.push('anchors');
+      this.el.setAttribute('webxr', webxrData);
+    }
+
+    this.el.sceneEl.renderer.xr.addEventListener('sessionend', function () {
+      this.hitTest = null;
+    }.bind(this));
+
+    this.el.sceneEl.renderer.xr.addEventListener('sessionstart', function () {
+      var renderer = this.el.sceneEl.renderer;
+      var session = this.session = renderer.xr.getSession();
+      this.hasPosedOnce = false;
+      this.bboxMesh.visible = false;
+
+      if (!hitTestCache) { hitTestCache = new Map(); }
+
+      // Default to selecting through the face
+      session.requestReferenceSpace('viewer')
+      .then(function (viewerSpace) {
+        this.hitTest = new HitTest(renderer, {
+          space: viewerSpace
+        });
+
+        hitTestCache.set(viewerSpace, this.hitTest);
+
+        this.el.emit('ar-hit-test-start');
+      }.bind(this));
+
+      // These are transient inputs so need to be handled seperately
+      var profileToSupport = 'generic-touchscreen';
+      var transientHitTest = new HitTest(renderer, {
+        profile: profileToSupport
+      });
+
+      session.addEventListener('selectstart', function (e) {
+        if (this.data.enabled !== true) { return; }
+
+        var inputSource = e.inputSource;
+
+        this.bboxMesh.visible = true;
+
+        if (this.hasPosedOnce === true) {
+          this.el.emit('ar-hit-test-select-start', {
+            inputSource: inputSource,
+            position: this.bboxMesh.position,
+            orientation: this.bboxMesh.quaternion
+          });
+
+          if (inputSource.profiles[0] === profileToSupport) {
+            this.hitTest = transientHitTest;
+          } else {
+            this.hitTest = hitTestCache.get(inputSource) || new HitTest(renderer, {
+              space: inputSource.targetRaySpace
+            });
+            hitTestCache.set(inputSource, this.hitTest);
+          }
+        }
+      }.bind(this));
+
+      session.addEventListener('selectend', function (e) {
+        if (!this.hitTest || this.data.enabled !== true) {
+          this.hitTest = null;
+          return;
+        }
+
+        var inputSource = e.inputSource;
+        var object;
+
+        if (this.hasPosedOnce === true) {
+          this.bboxMesh.visible = false;
+
+          object = this.data.target.object3D;
+          // if we have a target with a 3D object then automatically generate an anchor for it.
+          if (this.data.target && object) {
+            applyPose.tempFakePose.transform.position.copy(this.bboxMesh.position);
+            applyPose.tempFakePose.transform.orientation.copy(this.bboxMesh.quaternion);
+            applyPose(applyPose.tempFakePose, object, this.bboxOffset);
+            object.visible = true;
+
+            // create an anchor attatched to the object
+            this.hitTest.anchorFromLastHitTestResult(object, this.bboxOffset);
+          }
+
+          this.el.emit('ar-hit-test-select', {
+            inputSource: inputSource,
+            position: this.bboxMesh.position,
+            orientation: this.bboxMesh.quaternion
+          });
+        }
+
+        this.hitTest = null;
+      }.bind(this));
+    }.bind(this));
+
+    this.bboxOffset = new THREE.Vector3();
+    this.update = this.update.bind(this);
+    this.makeBBox();
+  },
+  update: function () {
+    if (this.data.target) {
+      if (this.data.target.object3D) {
+        this.data.target.addEventListener('model-loaded', this.update);
+        this.bboxNeedsUpdate = true;
+        this.data.target.object3D.layers.enable(CAM_LAYER);
+        this.data.target.object3D.traverse(function (child) {
+          child.layers.enable(CAM_LAYER);
+        });
+      } else {
+        this.data.target.addEventListener('loaded', this.update, {once: true});
+      }
+    }
+  },
+  makeBBox: function () {
+    var geometry = new THREE.PlaneGeometry(1, 1);
+    var material = new THREE.MeshBasicMaterial({
+      transparent: true,
+      color: 0xffffff
+    });
+    geometry.rotateX(-Math.PI / 2);
+    geometry.rotateY(-Math.PI / 2);
+    this.bbox = new THREE.Box3();
+    this.bboxMesh = new THREE.Mesh(geometry, material);
+    this.el.setObject3D('ar-hit-test', this.bboxMesh);
+    this.bboxMesh.visible = false;
+  },
+  updateFootprint: function () {
+    var tempImageData;
+    var renderer = this.el.sceneEl.renderer;
+    var oldRenderTarget, oldBackground;
+    this.bboxMesh.material.map = this.canvasTexture;
+    this.bboxMesh.material.needsUpdate = true;
+    this.orthoCam.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
+    this.orthoCam.position.copy(this.bboxMesh.position);
+    this.orthoCam.position.y -= this.bboxMesh.scale.y / 2;
+    this.orthoCam.near = 0.1;
+    this.orthoCam.far = this.orthoCam.near + (this.data.footprintDepth * this.bboxMesh.scale.y);
+    this.orthoCam.position.y += this.orthoCam.far;
+    this.orthoCam.right = this.bboxMesh.scale.z / 2;
+    this.orthoCam.left = -this.bboxMesh.scale.z / 2;
+    this.orthoCam.top = this.bboxMesh.scale.x / 2;
+    this.orthoCam.bottom = -this.bboxMesh.scale.x / 2;
+    this.orthoCam.updateProjectionMatrix();
+
+    oldRenderTarget = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.textureTarget);
+    oldBackground = this.el.object3D.background;
+    this.el.object3D.overrideMaterial = this.basicMaterial;
+    this.el.object3D.background = null;
+    renderer.render(this.el.object3D, this.orthoCam);
+    this.el.object3D.background = oldBackground;
+    this.el.object3D.overrideMaterial = null;
+    renderer.setRenderTarget(oldRenderTarget);
+    renderer.readRenderTargetPixels(this.textureTarget, 0, 0, 512, 512, this.imageDataArray);
+
+    this.context.putImageData(this.imageData, 0, 0);
+    this.context.shadowColor = 'white';
+    this.context.shadowBlur = 10;
+    this.context.drawImage(this.canvas, 0, 0);
+    tempImageData = this.context.getImageData(0, 0, 512, 512);
+    for (var i = 0; i < 512 * 512; i++) {
+      // if it's a little bit transparent but not opaque make it middle transparent
+      if (tempImageData.data[ i * 4 + 3 ] !== 0 && tempImageData.data[ i * 4 + 3 ] !== 255) {
+        tempImageData.data[ i * 4 + 3 ] = 128;
+      }
+    }
+    this.context.putImageData(tempImageData, 0, 0);
+    this.canvasTexture.needsUpdate = true;
+  },
+  tick: function () {
+    var pose;
+    var frame = this.el.sceneEl.frame;
+    var renderer = this.el.sceneEl.renderer;
+
+    if (frame) {
+      // if we are in XR then update the positions of the objects attatched to anchors
+      HitTest.updateAnchorPoses(frame, renderer.xr.getReferenceSpace());
+    }
+    if (this.bboxNeedsUpdate) {
+      this.bboxNeedsUpdate = false;
+
+      if (!this.data.target || this.data.type === 'map') {
+        var texture;
+        if (this.textureCache.has(this.data.src)) {
+          texture = this.textureCache.get(this.data.src);
+        } else {
+          texture = new THREE.TextureLoader().load(this.data.src);
+          this.textureCache.set(this.data.src, texture);
+        }
+        this.bboxMesh.material.map = texture;
+        this.bboxMesh.material.needsUpdate = true;
+      }
+
+      if (this.data.target && this.data.target.object3D) {
+        this.bbox.setFromObject(this.data.target.object3D);
+        this.bbox.getCenter(this.bboxMesh.position);
+        this.bbox.getSize(this.bboxMesh.scale);
+
+        if (this.data.type === 'footprint') {
+          // Add a little buffer for the footprint border
+          this.bboxMesh.scale.x *= 1.04;
+          this.bboxMesh.scale.z *= 1.04;
+          this.updateFootprint();
+        }
+
+        this.bboxMesh.position.y -= this.bboxMesh.scale.y / 2;
+        this.bboxOffset.copy(this.bboxMesh.position);
+        this.bboxOffset.sub(this.data.target.object3D.position);
+      }
+    }
+
+    if (this.hitTest) {
+      pose = this.hitTest.doHit(frame);
+      if (pose) {
+        if (this.hasPosedOnce !== true) {
+          this.hasPosedOnce = true;
+          this.el.emit('ar-hit-test-achieved');
+        }
+        this.bboxMesh.visible = true;
+        this.bboxMesh.position.copy(pose.transform.position);
+        this.bboxMesh.quaternion.copy(pose.transform.orientation);
+      }
+    }
+  }
+});
+
+},{"../../core/component":121,"../../lib/three":169}],89:[function(_dereq_,module,exports){
+/* global THREE, XRWebGLBinding */
 var register = _dereq_('../../core/component').registerComponent;
 var COMPONENTS = _dereq_('../../core/component').components;
 
+// source: view-source:https://storage.googleapis.com/chromium-webxr-test/r886480/proposals/lighting-estimation.html
+function updateLights (estimate, probeLight, directionalLight, directionalLightPosition) {
+  var intensityScalar =
+  Math.max(1.0,
+    Math.max(estimate.primaryLightIntensity.x,
+      Math.max(estimate.primaryLightIntensity.y,
+        estimate.primaryLightIntensity.z)));
+
+  probeLight.sh.fromArray(estimate.sphericalHarmonicsCoefficients);
+  probeLight.intensity = 1;
+
+  directionalLight.color.setRGB(
+    estimate.primaryLightIntensity.x / intensityScalar,
+    estimate.primaryLightIntensity.y / intensityScalar,
+    estimate.primaryLightIntensity.z / intensityScalar);
+
+  directionalLight.intensity = intensityScalar;
+  directionalLightPosition.copy(estimate.primaryLightDirection);
+}
+
 module.exports.Component = register('background', {
   schema: {
-    color: {type: 'color', default: 'black'},
-    transparent: {default: false}
+    color: { type: 'color', default: 'black' },
+    transparent: { default: false },
+    generateEnvironment: { default: true },
+    environmentUpdateFrequency: { default: 0 },
+    directionalLight: { type: 'selector' }
+  },
+  init: function () {
+    var self = this;
+
+    this.cubeRenderTarget = new THREE.WebGLCubeRenderTarget(128, { format: THREE.RGBFormat, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+    this.lightProbeTarget = new THREE.WebGLCubeRenderTarget(16, { format: THREE.RGBFormat, generateMipmaps: false });
+    this.cubeCamera = new THREE.CubeCamera(1, 100000, this.cubeRenderTarget);
+    this.needsEnvironmentUpdate = true;
+    this.timeSinceUpdate = 0;
+
+    // Update WebXR to support light-estimation
+    var webxrData = this.el.getAttribute('webxr');
+    var optionalFeaturesArray = webxrData.optionalFeatures;
+    if (!optionalFeaturesArray.includes('light-estimation')) {
+      optionalFeaturesArray.push('light-estimation');
+      this.el.setAttribute('webxr', webxrData);
+    }
+
+    this.el.sceneEl.addEventListener('enter-vr', function () {
+      var renderer = self.el.renderer;
+      var session = renderer.xr.getSession();
+      if (
+        session.requestLightProbe && self.el.sceneEl.is('ar-mode')
+      ) {
+        self.startLightProbe();
+      }
+    });
+
+    this.el.sceneEl.addEventListener('exit-vr', function () {
+      self.stopLightProbe();
+    });
+  },
+  stopLightProbe: function () {
+    var data = this.data;
+    var scene = this.el.sceneEl.object3D;
+    this.xrLightProbe = null;
+
+    this.probeLight.components.light.light.intensity = 0;
+    if (this.ownDirectionalLight) {
+      this.ownDirectionalLight.components.light.light.intensity = 0;
+    }
+
+    if (data.generateEnvironment) {
+      scene.environment = this.cubeRenderTarget.texture;
+      this.needsEnvironmentUpdate = true;
+    } else {
+      scene.environment = null;
+    }
+  },
+  setupLightsForLightingEstimation: function () {
+    // Make a directionalLight if required
+    if (this.data.directionalLight) {
+      this.directionalLight = this.data.directionalLight;
+    } else {
+      var directionalLight = this.ownDirectionalLight || document.createElement('a-light');
+      directionalLight.setAttribute('type', 'directional');
+      directionalLight.setAttribute('intensity', 0);
+      this.el.appendChild(directionalLight);
+      this.directionalLight = directionalLight;
+      this.ownDirectionalLight = directionalLight;
+    }
+
+    if (!this.probeLight) {
+      var probeLight = document.createElement('a-light');
+      probeLight.setAttribute('type', 'probe');
+      probeLight.setAttribute('intensity', 0);
+      this.el.appendChild(probeLight);
+      this.probeLight = probeLight;
+    }
+  },
+  startLightProbe: function () {
+    var data = this.data;
+    var scene = this.el.sceneEl.object3D;
+
+    if (data.generateEnvironment) {
+      this.needsLightProbeUpdate = true;
+      this.needsEnvironmentUpdate = true;
+    } else {
+      scene.environment = null;
+    }
+  },
+  setupLightProbe: function () {
+    var scene = this.el.object3D;
+    var renderer = this.el.renderer;
+    var xrSession = renderer.xr.getSession();
+    var self = this;
+    var gl = renderer.getContext();
+
+    this.setupLightsForLightingEstimation();
+
+    this.glBinding = new XRWebGLBinding(xrSession, gl);
+    gl.getExtension('EXT_sRGB');
+    gl.getExtension('OES_texture_half_float');
+
+    xrSession.requestLightProbe()
+      .then(function (lightProbe) {
+        scene.environment = self.lightProbeTarget.texture;
+
+        self.xrLightProbe = lightProbe;
+        lightProbe.addEventListener('reflectionchange', function onReflectionChanged () {
+          self.needsEnvironmentUpdate = true;
+        });
+      })
+      .catch(function (err) {
+        console.warn('Lighting estimation not supported: ' + err.message);
+        console.warn('Are you missing: webxr="optionalFeatures: light-estimation;" from <a-scene>?');
+      });
   },
   update: function () {
+    var scene = this.el.sceneEl.object3D;
     var data = this.data;
     var object3D = this.el.object3D;
+
     if (data.transparent) {
       object3D.background = null;
+    } else {
+      object3D.background = new THREE.Color(data.color);
+    }
+
+    if (scene.environment &&
+      (scene.environment !== this.cubeRenderTarget.texture || scene.environment !== this.lightProbeTarget.texture)
+    ) {
+      console.warn('Background will not override user defined environment maps');
       return;
     }
-    object3D.background = new THREE.Color(data.color);
+
+    if (data.generateEnvironment) {
+      scene.environment = this.cubeRenderTarget.texture;
+      this.needsEnvironmentUpdate = true;
+    } else {
+      scene.environment = null;
+    }
+  },
+
+  updateXRCubeMap: function () {
+    // Update Cube Map, cubeMap maybe some unavailable on some hardware
+    var renderer = this.el.renderer;
+    var cubeMap = this.glBinding.getReflectionCubeMap(this.xrLightProbe);
+    if (cubeMap) {
+      var rendererProps = renderer.properties.get(this.lightProbeTarget.texture);
+      rendererProps.__webglTexture = cubeMap;
+    }
+  },
+
+  tick: function (time, delta) {
+    var scene = this.el.object3D;
+    var renderer = this.el.renderer;
+    var frame = this.el.sceneEl.frame;
+
+    this.timeSinceUpdate += delta;
+    if (
+      this.data.environmentUpdateFrequency > 0 && // should update in general?
+      this.timeSinceUpdate > (this.data.environmentUpdateFrequency * 1000) // should update this tick?
+    ) {
+      this.timeSinceUpdate = 0;
+      this.needsEnvironmentUpdate = true;
+    }
+
+    if (frame && this.xrLightProbe) {
+      // light estimate may not yet be available, it takes a few frames to start working
+      var estimate = frame.getLightEstimate(this.xrLightProbe);
+
+      if (estimate) {
+        updateLights(
+          estimate,
+          this.probeLight.components.light.light,
+          this.directionalLight.components.light.light,
+          this.directionalLight.object3D.position
+        );
+      }
+    }
+
+    if (!this.needsEnvironmentUpdate) {
+      return;
+    }
+
+    if (this.needsLightProbeUpdate) {
+      // wait until the XR Session has started before trying to make
+      // the light probe
+      if (!frame) {
+        return;
+      }
+      this.needsLightProbeUpdate = false;
+      this.setupLightProbe();
+    }
+
+    if (this.xrLightProbe) {
+      this.updateXRCubeMap();
+    } else {
+      this.el.object3D.add(this.cubeCamera);
+      this.cubeCamera.position.set(0, 1.6, 0);
+      this.cubeCamera.update(renderer, scene);
+    }
+
+    this.needsEnvironmentUpdate = false;
   },
 
   remove: function () {
@@ -60359,18 +62391,21 @@ module.exports.Component = register('background', {
       object3D.background = null;
       return;
     }
+    if (object3D.environment === this.cubeRenderTarget.texture) {
+      object3D.environment = null;
+    }
     object3D.background = COMPONENTS[this.name].schema.color.default;
   }
 });
 
-},{"../../core/component":116}],85:[function(_dereq_,module,exports){
+},{"../../core/component":121}],90:[function(_dereq_,module,exports){
 var register = _dereq_('../../core/component').registerComponent;
 
 module.exports.Component = register('debug', {
   schema: {default: true}
 });
 
-},{"../../core/component":116}],86:[function(_dereq_,module,exports){
+},{"../../core/component":121}],91:[function(_dereq_,module,exports){
 /* global DeviceOrientationEvent, location  */
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var utils = _dereq_('../../utils/');
@@ -60589,7 +62624,7 @@ function createDialog (text, buttonsContainerEl) {
   return modalContainer;
 }
 
-},{"../../constants/":108,"../../core/component":116,"../../utils/":190}],87:[function(_dereq_,module,exports){
+},{"../../constants/":113,"../../core/component":121,"../../utils/":196}],92:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../../core/component').registerComponent;
 
 /**
@@ -60614,7 +62649,7 @@ module.exports.Component = registerComponent('embedded', {
 
 });
 
-},{"../../core/component":116}],88:[function(_dereq_,module,exports){
+},{"../../core/component":121}],93:[function(_dereq_,module,exports){
 var register = _dereq_('../../core/component').registerComponent;
 var THREE = _dereq_('../../lib/three');
 var debug = _dereq_('../../utils/debug');
@@ -60687,7 +62722,7 @@ function getFog (data) {
   return fog;
 }
 
-},{"../../core/component":116,"../../lib/three":164,"../../utils/debug":186}],89:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../lib/three":169,"../../utils/debug":192}],94:[function(_dereq_,module,exports){
 (function (process){(function (){
 /* global AFRAME */
 var AFRAME_INJECTED = _dereq_('../../constants').AFRAME_INJECTED;
@@ -60750,7 +62785,7 @@ module.exports.Component = registerComponent('inspector', {
    * <ctrl> + <alt> + i keyboard shortcut.
    */
   onKeydown: function (evt) {
-    var shortcutPressed = evt.keyCode === 73 && evt.ctrlKey && evt.altKey;
+    var shortcutPressed = evt.keyCode === 73 && (evt.ctrlKey && evt.altKey || evt.getModifierState('AltGraph'));
     if (!shortcutPressed) { return; }
     this.openInspector();
   },
@@ -60807,7 +62842,7 @@ module.exports.Component = registerComponent('inspector', {
 
 }).call(this)}).call(this,_dereq_('_process'))
 
-},{"../../../package":51,"../../constants":108,"../../core/component":116,"../../utils/":190,"_process":5}],90:[function(_dereq_,module,exports){
+},{"../../../package":53,"../../constants":113,"../../core/component":121,"../../utils/":196,"_process":5}],95:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var shouldCaptureKeyEvent = _dereq_('../../utils/').shouldCaptureKeyEvent;
 
@@ -60846,7 +62881,7 @@ module.exports.Component = registerComponent('keyboard-shortcuts', {
   }
 });
 
-},{"../../core/component":116,"../../utils/":190}],91:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../utils/":196}],96:[function(_dereq_,module,exports){
 var debug = _dereq_('../../utils/debug');
 var registerComponent = _dereq_('../../core/component').registerComponent;
 
@@ -60964,7 +62999,7 @@ module.exports.Component = registerComponent('pool', {
   }
 });
 
-},{"../../core/component":116,"../../utils/debug":186}],92:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../utils/debug":192}],97:[function(_dereq_,module,exports){
 /* global ImageData, URL */
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var THREE = _dereq_('../../lib/three');
@@ -61052,6 +63087,7 @@ module.exports.Component = registerComponent('screenshot', {
 
   getRenderTarget: function (width, height) {
     return new THREE.WebGLRenderTarget(width, height, {
+      encoding: THREE.sRGBEncoding,
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -61237,7 +63273,7 @@ module.exports.Component = registerComponent('screenshot', {
   }
 });
 
-},{"../../core/component":116,"../../lib/three":164}],93:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../lib/three":169}],98:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var RStats = _dereq_('../../../vendor/rStats');
 var utils = _dereq_('../../utils');
@@ -61317,7 +63353,7 @@ function createStats (scene) {
   });
 }
 
-},{"../../../vendor/rStats":202,"../../../vendor/rStats.extras":201,"../../core/component":116,"../../lib/rStatsAframe":163,"../../utils":190}],94:[function(_dereq_,module,exports){
+},{"../../../vendor/rStats":208,"../../../vendor/rStats.extras":207,"../../core/component":121,"../../lib/rStatsAframe":168,"../../utils":196}],99:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var constants = _dereq_('../../constants/');
 var utils = _dereq_('../../utils/');
@@ -61588,7 +63624,7 @@ function applyStickyHoverFix (buttonEl) {
   });
 }
 
-},{"../../constants/":108,"../../core/component":116,"../../utils/":190}],95:[function(_dereq_,module,exports){
+},{"../../constants/":113,"../../core/component":121,"../../utils/":196}],100:[function(_dereq_,module,exports){
 var component = _dereq_('../core/component');
 var THREE = _dereq_('../lib/three');
 var bind = _dereq_('../utils/bind');
@@ -61642,7 +63678,7 @@ module.exports.Component = registerComponent('shadow', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/bind":184}],96:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/bind":190}],101:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var debug = _dereq_('../utils/debug');
 var THREE = _dereq_('../lib/three');
@@ -61893,7 +63929,7 @@ module.exports.Component = registerComponent('sound', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/debug":186}],97:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/debug":192}],102:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -62432,7 +64468,7 @@ module.exports.Component = registerComponent('teleport-controls', {
   }
 });
 
-},{"../core/component":116}],98:[function(_dereq_,module,exports){
+},{"../core/component":121}],103:[function(_dereq_,module,exports){
 var createTextGeometry = _dereq_('three-bmfont-text');
 var loadBMFont = _dereq_('load-bmfont');
 
@@ -62916,7 +64952,7 @@ function PromiseCache () {
   };
 }
 
-},{"../core/component":116,"../core/shader":126,"../lib/three":164,"../utils/":190,"load-bmfont":23,"three-bmfont-text":40}],99:[function(_dereq_,module,exports){
+},{"../core/component":121,"../core/shader":131,"../lib/three":169,"../utils/":196,"load-bmfont":23,"three-bmfont-text":42}],104:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var controllerUtils = _dereq_('../utils/tracked-controls');
 var DEFAULT_CAMERA_HEIGHT = _dereq_('../constants').DEFAULT_CAMERA_HEIGHT;
@@ -63253,7 +65289,7 @@ module.exports.Component = registerComponent('tracked-controls-webvr', {
   }
 });
 
-},{"../constants":108,"../core/component":116,"../lib/three":164,"../utils/tracked-controls":199}],100:[function(_dereq_,module,exports){
+},{"../constants":113,"../core/component":121,"../lib/three":169,"../utils/tracked-controls":205}],105:[function(_dereq_,module,exports){
 var controllerUtils = _dereq_('../utils/tracked-controls');
 var registerComponent = _dereq_('../core/component').registerComponent;
 
@@ -63477,7 +65513,7 @@ module.exports.Component = registerComponent('tracked-controls-webxr', {
   }
 });
 
-},{"../core/component":116,"../utils/tracked-controls":199}],101:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/tracked-controls":205}],106:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 /**
@@ -63522,7 +65558,7 @@ module.exports.Component = registerComponent('tracked-controls', {
   }
 });
 
-},{"../core/component":116}],102:[function(_dereq_,module,exports){
+},{"../core/component":121}],107:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 var THREE = _dereq_('../lib/three');
@@ -63771,7 +65807,7 @@ module.exports.Component = registerComponent('valve-index-controls', {
   }
 });
 
-},{"../core/component":116,"../lib/three":164,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],103:[function(_dereq_,module,exports){
+},{"../core/component":121,"../lib/three":169,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],108:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 
 /**
@@ -63785,7 +65821,7 @@ module.exports.Component = registerComponent('visible', {
   }
 });
 
-},{"../core/component":116}],104:[function(_dereq_,module,exports){
+},{"../core/component":121}],109:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -63799,7 +65835,7 @@ var VIVE_CONTROLLER_MODEL_OBJ_MTL = 'https://cdn.aframe.io/controllers/vive/vr_c
 
 var isWebXRAvailable = _dereq_('../utils/').device.isWebXRAvailable;
 
-var GAMEPAD_ID_WEBXR = 'htc-vive-controller-mv';
+var GAMEPAD_ID_WEBXR = 'htc-vive';
 var GAMEPAD_ID_WEBVR = 'OpenVR ';
 
 // Prefix for Gen1 and Gen2 Oculus Touch Controllers.
@@ -64046,7 +66082,7 @@ module.exports.Component = registerComponent('vive-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],105:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],110:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
 
@@ -64228,7 +66264,7 @@ module.exports.Component = registerComponent('vive-focus-controls', {
   }
 });
 
-},{"../core/component":116,"../utils/bind":184,"../utils/tracked-controls":199}],106:[function(_dereq_,module,exports){
+},{"../core/component":121,"../utils/bind":190,"../utils/tracked-controls":205}],111:[function(_dereq_,module,exports){
 var KEYCODE_TO_CODE = _dereq_('../constants').keyboardevent.KEYCODE_TO_CODE;
 var registerComponent = _dereq_('../core/component').registerComponent;
 var THREE = _dereq_('../lib/three');
@@ -64269,6 +66305,7 @@ module.exports.Component = registerComponent('wasd-controls', {
 
     // Bind methods and add event listeners.
     this.onBlur = bind(this.onBlur, this);
+    this.onContextMenu = bind(this.onContextMenu, this);
     this.onFocus = bind(this.onFocus, this);
     this.onKeyDown = bind(this.onKeyDown, this);
     this.onKeyUp = bind(this.onKeyUp, this);
@@ -64383,6 +66420,7 @@ module.exports.Component = registerComponent('wasd-controls', {
   })(),
 
   attachVisibilityEventListeners: function () {
+    window.oncontextmenu = this.onContextMenu;
     window.addEventListener('blur', this.onBlur);
     window.addEventListener('focus', this.onFocus);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
@@ -64402,6 +66440,13 @@ module.exports.Component = registerComponent('wasd-controls', {
   removeKeyEventListeners: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+  },
+
+  onContextMenu: function () {
+    var keys = Object.keys(this.keys);
+    for (var i = 0; i < keys.length; i++) {
+      delete this.keys[keys[i]];
+    }
   },
 
   onBlur: function () {
@@ -64440,7 +66485,7 @@ function isEmptyObject (keys) {
   return true;
 }
 
-},{"../constants":108,"../core/component":116,"../lib/three":164,"../utils/":190}],107:[function(_dereq_,module,exports){
+},{"../constants":113,"../core/component":121,"../lib/three":169,"../utils/":196}],112:[function(_dereq_,module,exports){
 /* global THREE */
 var registerComponent = _dereq_('../core/component').registerComponent;
 var bind = _dereq_('../utils/bind');
@@ -64926,7 +66971,7 @@ module.exports.Component = registerComponent('windows-motion-controls', {
   }
 });
 
-},{"../constants":108,"../core/component":116,"../utils/":190,"../utils/bind":184,"../utils/tracked-controls":199}],108:[function(_dereq_,module,exports){
+},{"../constants":113,"../core/component":121,"../utils/":196,"../utils/bind":190,"../utils/tracked-controls":205}],113:[function(_dereq_,module,exports){
 module.exports = {
   AFRAME_INJECTED: 'aframe-injected',
   DEFAULT_CAMERA_HEIGHT: 1.6,
@@ -64934,7 +66979,7 @@ module.exports = {
   keyboardevent: _dereq_('./keyboardevent')
 };
 
-},{"./keyboardevent":109}],109:[function(_dereq_,module,exports){
+},{"./keyboardevent":114}],114:[function(_dereq_,module,exports){
 module.exports = {
   // Tiny KeyboardEvent.code polyfill.
   KEYCODE_TO_CODE: {
@@ -64949,7 +66994,7 @@ module.exports = {
   }
 };
 
-},{}],110:[function(_dereq_,module,exports){
+},{}],115:[function(_dereq_,module,exports){
 var ANode = _dereq_('./a-node');
 var bind = _dereq_('../utils/bind');
 var debug = _dereq_('../utils/debug');
@@ -64994,7 +67039,7 @@ module.exports = registerElement('a-assets', {
           loaded.push(new Promise(function (resolve, reject) {
             // Set in cache because we won't be needing to call three.js loader if we have.
             // a loaded media element.
-            THREE.Cache.files[imgEls[i].getAttribute('src')] = imgEl;
+            THREE.Cache.add(imgEls[i].getAttribute('src'), imgEl);
             imgEl.onload = resolve;
             imgEl.onerror = reject;
           }));
@@ -65117,7 +67162,7 @@ function mediaElementLoaded (el) {
         // Store video elements only. three.js loader is used for audio elements.
         // See assetParse too.
         if (el.tagName === 'VIDEO') {
-          THREE.Cache.files[el.getAttribute('src')] = el;
+          THREE.Cache.add(el.getAttribute('src'), el);
         }
         resolve();
       }
@@ -65229,7 +67274,7 @@ function getFileNameFromURL (url) {
 }
 module.exports.getFileNameFromURL = getFileNameFromURL;
 
-},{"../lib/three":164,"../utils/bind":184,"../utils/debug":186,"./a-node":114,"./a-register-element":115}],111:[function(_dereq_,module,exports){
+},{"../lib/three":169,"../utils/bind":190,"../utils/debug":192,"./a-node":119,"./a-register-element":120}],116:[function(_dereq_,module,exports){
 var debug = _dereq_('../utils/debug');
 var registerElement = _dereq_('./a-register-element').registerElement;
 
@@ -65279,7 +67324,7 @@ module.exports = registerElement('a-cubemap', {
   })
 });
 
-},{"../utils/debug":186,"./a-register-element":115}],112:[function(_dereq_,module,exports){
+},{"../utils/debug":192,"./a-register-element":120}],117:[function(_dereq_,module,exports){
 var ANode = _dereq_('./a-node');
 var COMPONENTS = _dereq_('./component').components;
 var registerElement = _dereq_('./a-register-element').registerElement;
@@ -66213,7 +68258,7 @@ function getRotation (entityEl) {
 AEntity = registerElement('a-entity', {prototype: proto});
 module.exports = AEntity;
 
-},{"../lib/three":164,"../utils/":190,"./a-node":114,"./a-register-element":115,"./component":116}],113:[function(_dereq_,module,exports){
+},{"../lib/three":169,"../utils/":196,"./a-node":119,"./a-register-element":120,"./component":121}],118:[function(_dereq_,module,exports){
 var ANode = _dereq_('./a-node');
 var registerElement = _dereq_('./a-register-element').registerElement;
 var components = _dereq_('./component').components;
@@ -66329,7 +68374,7 @@ module.exports = registerElement('a-mixin', {
   })
 });
 
-},{"../utils":190,"./a-node":114,"./a-register-element":115,"./component":116}],114:[function(_dereq_,module,exports){
+},{"../utils":196,"./a-node":119,"./a-register-element":120,"./component":121}],119:[function(_dereq_,module,exports){
 /* global CustomEvent */
 var registerElement = _dereq_('./a-register-element').registerElement;
 var isNode = _dereq_('./a-register-element').isNode;
@@ -66600,7 +68645,7 @@ module.exports = registerElement('a-node', {
   })
 });
 
-},{"../utils/":190,"./a-register-element":115}],115:[function(_dereq_,module,exports){
+},{"../utils/":196,"./a-register-element":120}],120:[function(_dereq_,module,exports){
 /*
   ------------------------------------------------------------
   ------------- WARNING WARNING WARNING WARNING --------------
@@ -66787,7 +68832,7 @@ function copyProperties (source, destination) {
 ANode = _dereq_('./a-node');
 AEntity = _dereq_('./a-entity');
 
-},{"./a-entity":112,"./a-node":114,"document-register-element":12}],116:[function(_dereq_,module,exports){
+},{"./a-entity":117,"./a-node":119,"document-register-element":12}],121:[function(_dereq_,module,exports){
 /* global Node */
 var schema = _dereq_('./schema');
 var scenes = _dereq_('./scene/scenes');
@@ -67592,7 +69637,7 @@ function isObjectOrArray (value) {
          !(value instanceof window.HTMLElement);
 }
 
-},{"../utils/":190,"./scene/scenes":123,"./schema":125,"./system":127}],117:[function(_dereq_,module,exports){
+},{"../utils/":196,"./scene/scenes":128,"./schema":130,"./system":132}],122:[function(_dereq_,module,exports){
 var schema = _dereq_('./schema');
 
 var processSchema = schema.process;
@@ -67619,7 +69664,7 @@ Geometry.prototype = {
    * Called during shader initialization and is only run once.
    */
   init: function (data) {
-    this.geometry = new THREE.Geometry();
+    this.geometry = new THREE.BufferGeometry();
     return this.geometry;
   },
 
@@ -67666,7 +69711,7 @@ module.exports.registerGeometry = function (name, definition) {
   return NewGeometry;
 };
 
-},{"../lib/three":164,"./schema":125}],118:[function(_dereq_,module,exports){
+},{"../lib/three":169,"./schema":130}],123:[function(_dereq_,module,exports){
 var coordinates = _dereq_('../utils/coordinates');
 var debug = _dereq_('debug');
 
@@ -67891,7 +69936,7 @@ function isValidDefaultCoordinate (possibleCoordinates, dimensions) {
 }
 module.exports.isValidDefaultCoordinate = isValidDefaultCoordinate;
 
-},{"../utils/coordinates":185,"debug":9}],119:[function(_dereq_,module,exports){
+},{"../utils/coordinates":191,"debug":9}],124:[function(_dereq_,module,exports){
 /* global Promise, screen, CustomEvent */
 var initMetaTags = _dereq_('./metaTags').inject;
 var initWakelock = _dereq_('./wakelock');
@@ -68108,6 +70153,7 @@ module.exports.AScene = registerElement('a-scene', {
         window.removeEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
         window.removeEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
         window.removeEventListener('sessionend', this.resize);
+        this.renderer.xr.dispose();
       }
     },
 
@@ -68820,7 +70866,7 @@ function setupCanvas (sceneEl) {
 }
 module.exports.setupCanvas = setupCanvas;  // For testing.
 
-},{"../../lib/three":164,"../../utils/":190,"../../utils/ios-orientationchange-blank-bug":191,"../a-entity":112,"../a-node":114,"../a-register-element":115,"../system":127,"./loadingScreen":120,"./metaTags":121,"./postMessage":122,"./scenes":123,"./wakelock":124}],120:[function(_dereq_,module,exports){
+},{"../../lib/three":169,"../../utils/":196,"../../utils/ios-orientationchange-blank-bug":197,"../a-entity":117,"../a-node":119,"../a-register-element":120,"../system":132,"./loadingScreen":125,"./metaTags":126,"./postMessage":127,"./scenes":128,"./wakelock":129}],125:[function(_dereq_,module,exports){
 /* global THREE */
 var utils = _dereq_('../../utils/');
 var styleParser = utils.styleParser;
@@ -68914,7 +70960,7 @@ function setupTitle () {
   sceneEl.appendChild(titleEl);
 }
 
-},{"../../utils/":190}],121:[function(_dereq_,module,exports){
+},{"../../utils/":196}],126:[function(_dereq_,module,exports){
 var constants = _dereq_('../../constants/');
 var extend = _dereq_('../../utils').extend;
 
@@ -68995,7 +71041,7 @@ function createTag (tagObj) {
   return extend(meta, tagObj.attributes);
 }
 
-},{"../../constants/":108,"../../utils":190}],122:[function(_dereq_,module,exports){
+},{"../../constants/":113,"../../utils":196}],127:[function(_dereq_,module,exports){
 var bind = _dereq_('../../utils/bind');
 var isIframed = _dereq_('../../utils/').isIframed;
 
@@ -69028,13 +71074,13 @@ function postMessageAPIHandler (event) {
   }
 }
 
-},{"../../utils/":190,"../../utils/bind":184}],123:[function(_dereq_,module,exports){
+},{"../../utils/":196,"../../utils/bind":190}],128:[function(_dereq_,module,exports){
 /*
   Scene index for keeping track of created scenes.
 */
 module.exports = [];
 
-},{}],124:[function(_dereq_,module,exports){
+},{}],129:[function(_dereq_,module,exports){
 var Wakelock = _dereq_('../../../vendor/wakelock/wakelock');
 
 module.exports = function initWakelock (scene) {
@@ -69045,7 +71091,7 @@ module.exports = function initWakelock (scene) {
   scene.addEventListener('exit-vr', function () { wakelock.release(); });
 };
 
-},{"../../../vendor/wakelock/wakelock":205}],125:[function(_dereq_,module,exports){
+},{"../../../vendor/wakelock/wakelock":211}],130:[function(_dereq_,module,exports){
 var utils = _dereq_('../utils/');
 var PropertyTypes = _dereq_('./propertyTypes');
 
@@ -69249,7 +71295,7 @@ function stringifyProperty (value, propDefinition) {
 }
 module.exports.stringifyProperty = stringifyProperty;
 
-},{"../utils/":190,"./propertyTypes":118}],126:[function(_dereq_,module,exports){
+},{"../utils/":196,"./propertyTypes":123}],131:[function(_dereq_,module,exports){
 var schema = _dereq_('./schema');
 
 var processSchema = schema.process;
@@ -69438,7 +71484,7 @@ module.exports.registerShader = function (name, definition) {
   return NewShader;
 };
 
-},{"../lib/three":164,"../utils":190,"./schema":125}],127:[function(_dereq_,module,exports){
+},{"../lib/three":169,"../utils":196,"./schema":130}],132:[function(_dereq_,module,exports){
 var components = _dereq_('./component');
 var schema = _dereq_('./schema');
 var utils = _dereq_('../utils/');
@@ -69596,10 +71642,10 @@ module.exports.registerSystem = function (name, definition) {
   for (i = 0; i < scenes.length; i++) { scenes[i].initSystem(name); }
 };
 
-},{"../utils/":190,"./component":116,"./schema":125}],128:[function(_dereq_,module,exports){
+},{"../utils/":196,"./component":121,"./schema":130}],133:[function(_dereq_,module,exports){
 _dereq_('./pivot');
 
-},{"./pivot":129}],129:[function(_dereq_,module,exports){
+},{"./pivot":134}],134:[function(_dereq_,module,exports){
 var registerComponent = _dereq_('../../core/component').registerComponent;
 var THREE = _dereq_('../../lib/three');
 
@@ -69648,7 +71694,7 @@ registerComponent('pivot', {
   }
 });
 
-},{"../../core/component":116,"../../lib/three":164}],130:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../lib/three":169}],135:[function(_dereq_,module,exports){
 /**
  * Common mesh defaults, mappings, and transforms.
  */
@@ -69675,7 +71721,7 @@ module.exports = function getMeshMixin () {
   };
 };
 
-},{"../../core/component":116,"../../core/shader":126,"../../utils/":190}],131:[function(_dereq_,module,exports){
+},{"../../core/component":121,"../../core/shader":131,"../../utils/":196}],136:[function(_dereq_,module,exports){
 _dereq_('./primitives/a-camera');
 _dereq_('./primitives/a-cursor');
 _dereq_('./primitives/a-curvedimage');
@@ -69691,7 +71737,7 @@ _dereq_('./primitives/a-video');
 _dereq_('./primitives/a-videosphere');
 _dereq_('./primitives/meshPrimitives');
 
-},{"./primitives/a-camera":133,"./primitives/a-cursor":134,"./primitives/a-curvedimage":135,"./primitives/a-gltf-model":136,"./primitives/a-image":137,"./primitives/a-light":138,"./primitives/a-link":139,"./primitives/a-obj-model":140,"./primitives/a-sky":141,"./primitives/a-sound":142,"./primitives/a-text":143,"./primitives/a-video":144,"./primitives/a-videosphere":145,"./primitives/meshPrimitives":146}],132:[function(_dereq_,module,exports){
+},{"./primitives/a-camera":138,"./primitives/a-cursor":139,"./primitives/a-curvedimage":140,"./primitives/a-gltf-model":141,"./primitives/a-image":142,"./primitives/a-light":143,"./primitives/a-link":144,"./primitives/a-obj-model":145,"./primitives/a-sky":146,"./primitives/a-sound":147,"./primitives/a-text":148,"./primitives/a-video":149,"./primitives/a-videosphere":150,"./primitives/meshPrimitives":151}],137:[function(_dereq_,module,exports){
 var AEntity = _dereq_('../../core/a-entity');
 var components = _dereq_('../../core/component').components;
 var registerElement = _dereq_('../../core/a-register-element').registerElement;
@@ -69890,7 +71936,7 @@ function definePrimitive (tagName, defaultComponents, mappings) {
 }
 module.exports.definePrimitive = definePrimitive;
 
-},{"../../core/a-entity":112,"../../core/a-register-element":115,"../../core/component":116,"../../utils/":190}],133:[function(_dereq_,module,exports){
+},{"../../core/a-entity":117,"../../core/a-register-element":120,"../../core/component":121,"../../utils/":196}],138:[function(_dereq_,module,exports){
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 
 registerPrimitive('a-camera', {
@@ -69914,7 +71960,7 @@ registerPrimitive('a-camera', {
   }
 });
 
-},{"../primitives":132}],134:[function(_dereq_,module,exports){
+},{"../primitives":137}],139:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -69949,7 +71995,7 @@ registerPrimitive('a-cursor', utils.extendDeep({}, getMeshMixin(), {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],135:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],140:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -69986,7 +72032,7 @@ registerPrimitive('a-curvedimage', utils.extendDeep({}, getMeshMixin(), {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],136:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],141:[function(_dereq_,module,exports){
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 
 registerPrimitive('a-gltf-model', {
@@ -69995,7 +72041,7 @@ registerPrimitive('a-gltf-model', {
   }
 });
 
-},{"../primitives":132}],137:[function(_dereq_,module,exports){
+},{"../primitives":137}],142:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -70019,7 +72065,7 @@ registerPrimitive('a-image', utils.extendDeep({}, getMeshMixin(), {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],138:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],143:[function(_dereq_,module,exports){
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 
 registerPrimitive('a-light', {
@@ -70036,11 +72082,12 @@ registerPrimitive('a-light', {
     intensity: 'light.intensity',
     penumbra: 'light.penumbra',
     type: 'light.type',
-    target: 'light.target'
+    target: 'light.target',
+    envmap: 'light.envMap'
   }
 });
 
-},{"../primitives":132}],139:[function(_dereq_,module,exports){
+},{"../primitives":137}],144:[function(_dereq_,module,exports){
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 
 registerPrimitive('a-link', {
@@ -70057,7 +72104,7 @@ registerPrimitive('a-link', {
   }
 });
 
-},{"../primitives":132}],140:[function(_dereq_,module,exports){
+},{"../primitives":137}],145:[function(_dereq_,module,exports){
 var meshMixin = _dereq_('../getMeshMixin')();
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -70073,7 +72120,7 @@ registerPrimitive('a-obj-model', utils.extendDeep({}, meshMixin, {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],141:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],146:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -70099,7 +72146,7 @@ registerPrimitive('a-sky', utils.extendDeep({}, getMeshMixin(), {
   mappings: utils.extendDeep({}, meshPrimitives['a-sphere'].prototype.mappings)
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132,"./meshPrimitives":146}],142:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137,"./meshPrimitives":151}],147:[function(_dereq_,module,exports){
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 
 registerPrimitive('a-sound', {
@@ -70116,12 +72163,12 @@ registerPrimitive('a-sound', {
   }
 });
 
-},{"../primitives":132}],143:[function(_dereq_,module,exports){
+},{"../primitives":137}],148:[function(_dereq_,module,exports){
 // <a-text> using `definePrimitive` helper.
 var definePrimitive = _dereq_('../primitives').definePrimitive;
 definePrimitive('a-text', {text: {anchor: 'align', width: 5}});
 
-},{"../primitives":132}],144:[function(_dereq_,module,exports){
+},{"../primitives":137}],149:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -70145,7 +72192,7 @@ registerPrimitive('a-video', utils.extendDeep({}, getMeshMixin(), {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],145:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],150:[function(_dereq_,module,exports){
 var getMeshMixin = _dereq_('../getMeshMixin');
 var registerPrimitive = _dereq_('../primitives').registerPrimitive;
 var utils = _dereq_('../../../utils/');
@@ -70174,7 +72221,7 @@ registerPrimitive('a-videosphere', utils.extendDeep({}, getMeshMixin(), {
   }
 }));
 
-},{"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],146:[function(_dereq_,module,exports){
+},{"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],151:[function(_dereq_,module,exports){
 /**
  * Automated mesh primitive registration.
  */
@@ -70214,7 +72261,7 @@ function unCamelCase (str) {
   return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
-},{"../../../core/geometry":117,"../../../utils/":190,"../getMeshMixin":130,"../primitives":132}],147:[function(_dereq_,module,exports){
+},{"../../../core/geometry":122,"../../../utils/":196,"../getMeshMixin":135,"../primitives":137}],152:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70235,7 +72282,7 @@ registerGeometry('box', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],148:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],153:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70255,7 +72302,7 @@ registerGeometry('circle', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],149:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],154:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70281,7 +72328,7 @@ registerGeometry('cone', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],150:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],155:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70305,7 +72352,7 @@ registerGeometry('cylinder', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],151:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],156:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70320,7 +72367,7 @@ registerGeometry('dodecahedron', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],152:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],157:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70335,7 +72382,7 @@ registerGeometry('icosahedron', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],153:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],158:[function(_dereq_,module,exports){
 _dereq_('./box.js');
 _dereq_('./circle.js');
 _dereq_('./cone.js');
@@ -70351,7 +72398,7 @@ _dereq_('./torus.js');
 _dereq_('./torusKnot.js');
 _dereq_('./triangle.js');
 
-},{"./box.js":147,"./circle.js":148,"./cone.js":149,"./cylinder.js":150,"./dodecahedron.js":151,"./icosahedron.js":152,"./octahedron.js":154,"./plane.js":155,"./ring.js":156,"./sphere.js":157,"./tetrahedron.js":158,"./torus.js":159,"./torusKnot.js":160,"./triangle.js":161}],154:[function(_dereq_,module,exports){
+},{"./box.js":152,"./circle.js":153,"./cone.js":154,"./cylinder.js":155,"./dodecahedron.js":156,"./icosahedron.js":157,"./octahedron.js":159,"./plane.js":160,"./ring.js":161,"./sphere.js":162,"./tetrahedron.js":163,"./torus.js":164,"./torusKnot.js":165,"./triangle.js":166}],159:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70366,7 +72413,7 @@ registerGeometry('octahedron', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],155:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],160:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70383,7 +72430,7 @@ registerGeometry('plane', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],156:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],161:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70406,7 +72453,7 @@ registerGeometry('ring', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],157:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],162:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70430,7 +72477,7 @@ registerGeometry('sphere', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],158:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],163:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70445,7 +72492,7 @@ registerGeometry('tetrahedron', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],159:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],164:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70467,7 +72514,7 @@ registerGeometry('torus', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],160:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],165:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70488,7 +72535,7 @@ registerGeometry('torusKnot', {
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],161:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],166:[function(_dereq_,module,exports){
 var registerGeometry = _dereq_('../core/geometry').registerGeometry;
 var THREE = _dereq_('../lib/three');
 
@@ -70513,6 +72560,10 @@ registerGeometry('triangle', {
     var uvB;
     var uvC;
 
+    var vertices;
+    var normals;
+    var uvs;
+
     triangle = new THREE.Triangle();
     triangle.a.set(data.vertexA.x, data.vertexA.y, data.vertexA.z);
     triangle.b.set(data.vertexB.x, data.vertexB.y, data.vertexB.z);
@@ -70534,16 +72585,30 @@ registerGeometry('triangle', {
     uvB = new THREE.Vector2().subVectors(uvB, uvMinVector).divide(uvScaleVector);
     uvC = new THREE.Vector2().subVectors(uvC, uvMinVector).divide(uvScaleVector);
 
-    geometry = this.geometry = new THREE.Geometry();
-    geometry.vertices.push(triangle.a);
-    geometry.vertices.push(triangle.b);
-    geometry.vertices.push(triangle.c);
-    geometry.faces.push(new THREE.Face3(0, 1, 2, normal));
-    geometry.faceVertexUvs[0] = [[uvA, uvB, uvC]];
+    geometry = this.geometry = new THREE.BufferGeometry();
+    vertices = [
+      triangle.a.x, triangle.a.y, triangle.a.z,
+      triangle.b.x, triangle.b.y, triangle.b.z,
+      triangle.c.x, triangle.c.y, triangle.c.z
+    ];
+    normals = [
+      normal.x, normal.y, normal.z,
+      normal.x, normal.y, normal.z,
+      normal.x, normal.y, normal.z
+    ];
+    uvs = [
+      uvA.x, uvA.y,
+      uvB.x, uvB.y,
+      uvC.x, uvC.y
+    ];
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   }
 });
 
-},{"../core/geometry":117,"../lib/three":164}],162:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../lib/three":169}],167:[function(_dereq_,module,exports){
 // Polyfill `Promise`.
 window.Promise = window.Promise || _dereq_('promise-polyfill');
 
@@ -70636,7 +72701,8 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 1.1.0 (Date 2021-01-01, Commit #0ffe4157)');
+console.log('A-Frame Version: 1.2.0 (Date 2021-09-05, Commit #e2b31cc8)');
+
 console.log('THREE Version (https://github.com/supermedium/three.js):',
             pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
@@ -70669,7 +72735,7 @@ module.exports = window.AFRAME = {
   version: pkg.version
 };
 
-},{"../package":51,"../vendor/starts-with-polyfill":203,"./components/index":65,"./core/a-assets":110,"./core/a-cubemap":111,"./core/a-entity":112,"./core/a-mixin":113,"./core/a-node":114,"./core/a-register-element":115,"./core/component":116,"./core/geometry":117,"./core/scene/a-scene":119,"./core/scene/scenes":123,"./core/schema":125,"./core/shader":126,"./core/system":127,"./extras/components/":128,"./extras/primitives/":131,"./extras/primitives/getMeshMixin":130,"./extras/primitives/primitives":132,"./geometries/index":153,"./lib/three":164,"./shaders/index":166,"./style/aframe.css":171,"./style/rStats.css":172,"./systems/index":176,"./utils/":190,"./utils/isIOSOlderThan10":193,"custom-event-polyfill":8,"present":31,"promise-polyfill":32,"super-animejs":34,"webvr-polyfill":46}],163:[function(_dereq_,module,exports){
+},{"../package":53,"../vendor/starts-with-polyfill":209,"./components/index":69,"./core/a-assets":115,"./core/a-cubemap":116,"./core/a-entity":117,"./core/a-mixin":118,"./core/a-node":119,"./core/a-register-element":120,"./core/component":121,"./core/geometry":122,"./core/scene/a-scene":124,"./core/scene/scenes":128,"./core/schema":130,"./core/shader":131,"./core/system":132,"./extras/components/":133,"./extras/primitives/":136,"./extras/primitives/getMeshMixin":135,"./extras/primitives/primitives":137,"./geometries/index":158,"./lib/three":169,"./shaders/index":171,"./style/aframe.css":177,"./style/rStats.css":178,"./systems/index":182,"./utils/":196,"./utils/isIOSOlderThan10":199,"custom-event-polyfill":8,"present":31,"promise-polyfill":32,"super-animejs":34,"webvr-polyfill":48}],168:[function(_dereq_,module,exports){
 window.aframeStats = function (scene) {
   var _rS = null;
   var _scene = scene;
@@ -70726,7 +72792,7 @@ if (typeof module === 'object') {
   };
 }
 
-},{}],164:[function(_dereq_,module,exports){
+},{}],169:[function(_dereq_,module,exports){
 (function (global){(function (){
 var THREE = global.THREE = _dereq_('super-three');
 
@@ -70754,6 +72820,8 @@ _dereq_('super-three/examples/js/loaders/DRACOLoader');  // THREE.DRACOLoader
 _dereq_('super-three/examples/js/loaders/GLTFLoader');  // THREE.GLTFLoader
 _dereq_('super-three/examples/js/loaders/OBJLoader');  // THREE.OBJLoader
 _dereq_('super-three/examples/js/loaders/MTLLoader');  // THREE.MTLLoader
+_dereq_('super-three/examples/js/utils/BufferGeometryUtils');  // THREE.BufferGeometryUtils
+_dereq_('super-three/examples/js/lights/LightProbeGenerator'); // THREE.LightProbeGenerator
 
 THREE.DRACOLoader.prototype.crossOrigin = 'anonymous';
 THREE.GLTFLoader.prototype.crossOrigin = 'anonymous';
@@ -70764,7 +72832,7 @@ module.exports = THREE;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../../vendor/DeviceOrientationControls":200,"super-three":35,"super-three/examples/js/loaders/DRACOLoader":36,"super-three/examples/js/loaders/GLTFLoader":37,"super-three/examples/js/loaders/MTLLoader":38,"super-three/examples/js/loaders/OBJLoader":39}],165:[function(_dereq_,module,exports){
+},{"../../vendor/DeviceOrientationControls":206,"super-three":35,"super-three/examples/js/lights/LightProbeGenerator":36,"super-three/examples/js/loaders/DRACOLoader":37,"super-three/examples/js/loaders/GLTFLoader":38,"super-three/examples/js/loaders/MTLLoader":39,"super-three/examples/js/loaders/OBJLoader":40,"super-three/examples/js/utils/BufferGeometryUtils":41}],170:[function(_dereq_,module,exports){
 var registerShader = _dereq_('../core/shader').registerShader;
 var THREE = _dereq_('../lib/three');
 var utils = _dereq_('../utils/');
@@ -70834,14 +72902,15 @@ function getMaterialData (data, materialData) {
   return materialData;
 }
 
-},{"../core/shader":126,"../lib/three":164,"../utils/":190}],166:[function(_dereq_,module,exports){
+},{"../core/shader":131,"../lib/three":169,"../utils/":196}],171:[function(_dereq_,module,exports){
 _dereq_('./flat');
 _dereq_('./standard');
 _dereq_('./sdf');
 _dereq_('./msdf');
 _dereq_('./ios10hls');
+_dereq_('./shadow');
 
-},{"./flat":165,"./ios10hls":167,"./msdf":168,"./sdf":169,"./standard":170}],167:[function(_dereq_,module,exports){
+},{"./flat":170,"./ios10hls":172,"./msdf":173,"./sdf":174,"./shadow":175,"./standard":176}],172:[function(_dereq_,module,exports){
 var registerShader = _dereq_('../core/shader').registerShader;
 
 /**
@@ -70876,7 +72945,7 @@ module.exports.Shader = registerShader('ios10hls', {
 });
 
 
-},{"../core/shader":126}],168:[function(_dereq_,module,exports){
+},{"../core/shader":131}],173:[function(_dereq_,module,exports){
 var registerShader = _dereq_('../core/shader').registerShader;
 
 var isWebGL2AVailable = !!document.createElement('canvas').getContext('webgl2');
@@ -71017,8 +73086,205 @@ module.exports.Shader = registerShader('msdf', {
   fragmentShader: FRAGMENT_SHADER
 });
 
-},{"../core/shader":126}],169:[function(_dereq_,module,exports){
+},{"../core/shader":131}],174:[function(_dereq_,module,exports){
 var registerShader = _dereq_('../core/shader').registerShader;
+
+var isWebGL2AVailable = !!document.createElement('canvas').getContext('webgl2');
+
+var VERTEX_SHADER_WEBGL1 = [
+  'attribute vec2 uv;',
+  'attribute vec3 position;',
+  'uniform mat4 projectionMatrix;',
+  'uniform mat4 modelViewMatrix;',
+  'varying vec2 vUV;',
+  'void main(void) {',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '  vUV = uv;',
+  '}'
+].join('\n');
+
+var VERTEX_SHADER_WEBGL2 = [
+  '#version 300 es',
+  'in vec2 uv;',
+  'in vec3 position;',
+  'uniform mat4 projectionMatrix;',
+  'uniform mat4 modelViewMatrix;',
+  'out vec2 vUV;',
+  'void main(void) {',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '  vUV = uv;',
+  '}'
+].join('\n');
+
+var VERTEX_SHADER = isWebGL2AVailable ? VERTEX_SHADER_WEBGL2 : VERTEX_SHADER_WEBGL1;
+
+var FRAGMENT_SHADER_WEBGL1 = [
+  '#ifdef GL_OES_standard_derivatives',
+  '#extension GL_OES_standard_derivatives: enable',
+  '#endif',
+
+  'precision highp float;',
+  'uniform float alphaTest;',
+  'uniform float opacity;',
+  'uniform sampler2D map;',
+  'uniform vec3 color;',
+  'varying vec2 vUV;',
+
+  '#ifdef GL_OES_standard_derivatives',
+  '  float contour(float width, float value) {',
+  '    return smoothstep(0.5 - value, 0.5 + value, width);',
+  '  }',
+  '#else',
+  '  float aastep(float value, float afwidth) {',
+  '    return smoothstep(0.5 - afwidth, 0.5 + afwidth, value);',
+  '  }',
+  '#endif',
+
+  // FIXME: Experimentally determined constants.
+  '#define BIG_ENOUGH 0.001',
+  '#define MODIFIED_ALPHATEST (0.02 * isBigEnough / BIG_ENOUGH)',
+  '#define ALL_SMOOTH 0.4',
+  '#define ALL_ROUGH 0.02',
+  '#define DISCARD_ALPHA (alphaTest / (2.2 - 1.2 * ratio))',
+
+  'void main() {',
+     // When we have derivatives and can get texel size for supersampling.
+  '  #ifdef GL_OES_standard_derivatives',
+  '    vec2 uv = vUV;',
+  '    vec4 texColor = texture2D(map, uv);',
+  '    float dist = texColor.a;',
+  '    float width = fwidth(dist);',
+  '    float alpha = contour(dist, width);',
+  '    float dscale = 0.353505;',
+
+  '    vec2 duv = dscale * (dFdx(uv) + dFdy(uv));',
+  '    float isBigEnough = max(abs(duv.x), abs(duv.y));',
+
+       // When texel is too small, blend raw alpha value rather than supersampling.
+       // FIXME: experimentally determined constant
+  '    if (isBigEnough > BIG_ENOUGH) {',
+  '      float ratio = BIG_ENOUGH / isBigEnough;',
+  '      alpha = ratio * alpha + (1.0 - ratio) * dist;',
+  '    }',
+
+       // Otherwise do weighted supersampling.
+       // FIXME: why this weighting?
+  '    if (isBigEnough <= BIG_ENOUGH) {',
+  '      vec4 box = vec4 (uv - duv, uv + duv);',
+  '      alpha = (alpha + 0.5 * (',
+  '        contour(texture2D(map, box.xy).a, width)',
+  '        + contour(texture2D(map, box.zw).a, width)',
+  '        + contour(texture2D(map, box.xw).a, width)',
+  '        + contour(texture2D(map, box.zy).a, width)',
+  '      )) / 3.0;',
+  '    }',
+
+       // Do modified alpha test.
+  '    if (alpha < alphaTest * MODIFIED_ALPHATEST) { discard; return; }',
+
+  '  #else',
+       // When we don't have derivatives, use approximations.
+  '    vec4 texColor = texture2D(map, vUV);',
+  '    float value = texColor.a;',
+       // FIXME: if we understood font pixel dimensions, this could probably be improved
+  '    float afwidth = (1.0 / 32.0) * (1.4142135623730951 / (2.0 * gl_FragCoord.w));',
+  '    float alpha = aastep(value, afwidth);',
+
+       // Use gl_FragCoord.w to guess when we should blend.
+       // FIXME: If we understood font pixel dimensions, this could probably be improved.
+  '    float ratio = (gl_FragCoord.w >= ALL_SMOOTH) ? 1.0 : (gl_FragCoord.w < ALL_ROUGH) ? 0.0 : (gl_FragCoord.w - ALL_ROUGH) / (ALL_SMOOTH - ALL_ROUGH);',
+  '    if (alpha < alphaTest) { if (ratio >= 1.0) { discard; return; } alpha = 0.0; }',
+  '    alpha = alpha * ratio + (1.0 - ratio) * value;',
+  '    if (ratio < 1.0 && alpha <= DISCARD_ALPHA) { discard; return; }',
+  '  #endif',
+
+  '  gl_FragColor = vec4(color, opacity * alpha);',
+  '}'
+].join('\n');
+
+var FRAGMENT_SHADER_WEBGL2 = [
+  '#version 300 es',
+  'precision highp float;',
+  'uniform float alphaTest;',
+  'uniform float opacity;',
+  'uniform sampler2D map;',
+  'uniform vec3 color;',
+  'in vec2 vUV;',
+  'out vec4 fragColor;',
+
+  '#ifdef GL_OES_standard_derivatives',
+  '  float contour(float width, float value) {',
+  '    return smoothstep(0.5 - value, 0.5 + value, width);',
+  '  }',
+  '#else',
+  '  float aastep(float value, float afwidth) {',
+  '    return smoothstep(0.5 - afwidth, 0.5 + afwidth, value);',
+  '  }',
+  '#endif',
+
+  // FIXME: Experimentally determined constants.
+  '#define BIG_ENOUGH 0.001',
+  '#define MODIFIED_ALPHATEST (0.02 * isBigEnough / BIG_ENOUGH)',
+  '#define ALL_SMOOTH 0.4',
+  '#define ALL_ROUGH 0.02',
+  '#define DISCARD_ALPHA (alphaTest / (2.2 - 1.2 * ratio))',
+
+  'void main() {',
+     // When we have derivatives and can get texel size for supersampling.
+  '  #ifdef GL_OES_standard_derivatives',
+  '    vec2 uv = vUV;',
+  '    vec4 texColor = texture(map, uv);',
+  '    float dist = texColor.a;',
+  '    float width = fwidth(dist);',
+  '    float alpha = contour(dist, width);',
+  '    float dscale = 0.353505;',
+
+  '    vec2 duv = dscale * (dFdx(uv) + dFdy(uv));',
+  '    float isBigEnough = max(abs(duv.x), abs(duv.y));',
+
+       // When texel is too small, blend raw alpha value rather than supersampling.
+       // FIXME: experimentally determined constant
+  '    if (isBigEnough > BIG_ENOUGH) {',
+  '      float ratio = BIG_ENOUGH / isBigEnough;',
+  '      alpha = ratio * alpha + (1.0 - ratio) * dist;',
+  '    }',
+
+       // Otherwise do weighted supersampling.
+       // FIXME: why this weighting?
+  '    if (isBigEnough <= BIG_ENOUGH) {',
+  '      vec4 box = vec4 (uv - duv, uv + duv);',
+  '      alpha = (alpha + 0.5 * (',
+  '        contour(texture(map, box.xy).a, width)',
+  '        + contour(texture(map, box.zw).a, width)',
+  '        + contour(texture(map, box.xw).a, width)',
+  '        + contour(texture(map, box.zy).a, width)',
+  '      )) / 3.0;',
+  '    }',
+
+       // Do modified alpha test.
+  '    if (alpha < alphaTest * MODIFIED_ALPHATEST) { discard; return; }',
+
+  '  #else',
+       // When we don't have derivatives, use approximations.
+  '    vec4 texColor = texture(map, vUV);',
+  '    float value = texColor.a;',
+       // FIXME: if we understood font pixel dimensions, this could probably be improved
+  '    float afwidth = (1.0 / 32.0) * (1.4142135623730951 / (2.0 * gl_FragCoord.w));',
+  '    float alpha = aastep(value, afwidth);',
+
+       // Use gl_FragCoord.w to guess when we should blend.
+       // FIXME: If we understood font pixel dimensions, this could probably be improved.
+  '    float ratio = (gl_FragCoord.w >= ALL_SMOOTH) ? 1.0 : (gl_FragCoord.w < ALL_ROUGH) ? 0.0 : (gl_FragCoord.w - ALL_ROUGH) / (ALL_SMOOTH - ALL_ROUGH);',
+  '    if (alpha < alphaTest) { if (ratio >= 1.0) { discard; return; } alpha = 0.0; }',
+  '    alpha = alpha * ratio + (1.0 - ratio) * value;',
+  '    if (ratio < 1.0 && alpha <= DISCARD_ALPHA) { discard; return; }',
+  '  #endif',
+
+  '  fragColor = vec4(color, opacity * alpha);',
+  '}'
+].join('\n');
+
+var FRAGMENT_SHADER = isWebGL2AVailable ? FRAGMENT_SHADER_WEBGL2 : FRAGMENT_SHADER_WEBGL1;
 
 /**
  * Signed distance field.
@@ -71034,103 +73300,43 @@ module.exports.Shader = registerShader('sdf', {
 
   raw: true,
 
-  vertexShader: [
-    '#version 300 es',
-    'in vec2 uv;',
-    'in vec3 position;',
-    'uniform mat4 projectionMatrix;',
-    'uniform mat4 modelViewMatrix;',
-    'out vec2 vUV;',
-    'void main(void) {',
-    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-    '  vUV = uv;',
-    '}'
-  ].join('\n'),
+  vertexShader: VERTEX_SHADER,
 
-  fragmentShader: [
-    '#version 300 es',
-    'precision highp float;',
-    'uniform float alphaTest;',
-    'uniform float opacity;',
-    'uniform sampler2D map;',
-    'uniform vec3 color;',
-    'in vec2 vUV;',
-    'out vec4 fragColor;',
-
-    '#ifdef GL_OES_standard_derivatives',
-    '  float contour(float width, float value) {',
-    '    return smoothstep(0.5 - value, 0.5 + value, width);',
-    '  }',
-    '#else',
-    '  float aastep(float value, float afwidth) {',
-    '    return smoothstep(0.5 - afwidth, 0.5 + afwidth, value);',
-    '  }',
-    '#endif',
-
-    // FIXME: Experimentally determined constants.
-    '#define BIG_ENOUGH 0.001',
-    '#define MODIFIED_ALPHATEST (0.02 * isBigEnough / BIG_ENOUGH)',
-    '#define ALL_SMOOTH 0.4',
-    '#define ALL_ROUGH 0.02',
-    '#define DISCARD_ALPHA (alphaTest / (2.2 - 1.2 * ratio))',
-
-    'void main() {',
-       // When we have derivatives and can get texel size for supersampling.
-    '  #ifdef GL_OES_standard_derivatives',
-    '    vec2 uv = vUV;',
-    '    vec4 texColor = texture(map, uv);',
-    '    float dist = texColor.a;',
-    '    float width = fwidth(dist);',
-    '    float alpha = contour(dist, width);',
-    '    float dscale = 0.353505;',
-
-    '    vec2 duv = dscale * (dFdx(uv) + dFdy(uv));',
-    '    float isBigEnough = max(abs(duv.x), abs(duv.y));',
-
-         // When texel is too small, blend raw alpha value rather than supersampling.
-         // FIXME: experimentally determined constant
-    '    if (isBigEnough > BIG_ENOUGH) {',
-    '      float ratio = BIG_ENOUGH / isBigEnough;',
-    '      alpha = ratio * alpha + (1.0 - ratio) * dist;',
-    '    }',
-
-         // Otherwise do weighted supersampling.
-         // FIXME: why this weighting?
-    '    if (isBigEnough <= BIG_ENOUGH) {',
-    '      vec4 box = vec4 (uv - duv, uv + duv);',
-    '      alpha = (alpha + 0.5 * (',
-    '        contour(texture(map, box.xy).a, width)',
-    '        + contour(texture(map, box.zw).a, width)',
-    '        + contour(texture(map, box.xw).a, width)',
-    '        + contour(texture(map, box.zy).a, width)',
-    '      )) / 3.0;',
-    '    }',
-
-         // Do modified alpha test.
-    '    if (alpha < alphaTest * MODIFIED_ALPHATEST) { discard; return; }',
-
-    '  #else',
-         // When we don't have derivatives, use approximations.
-    '    vec4 texColor = texture(map, vUV);',
-    '    float value = texColor.a;',
-         // FIXME: if we understood font pixel dimensions, this could probably be improved
-    '    float afwidth = (1.0 / 32.0) * (1.4142135623730951 / (2.0 * gl_FragCoord.w));',
-    '    float alpha = aastep(value, afwidth);',
-
-         // Use gl_FragCoord.w to guess when we should blend.
-         // FIXME: If we understood font pixel dimensions, this could probably be improved.
-    '    float ratio = (gl_FragCoord.w >= ALL_SMOOTH) ? 1.0 : (gl_FragCoord.w < ALL_ROUGH) ? 0.0 : (gl_FragCoord.w - ALL_ROUGH) / (ALL_SMOOTH - ALL_ROUGH);',
-    '    if (alpha < alphaTest) { if (ratio >= 1.0) { discard; return; } alpha = 0.0; }',
-    '    alpha = alpha * ratio + (1.0 - ratio) * value;',
-    '    if (ratio < 1.0 && alpha <= DISCARD_ALPHA) { discard; return; }',
-    '  #endif',
-
-    '  fragColor = vec4(color, opacity * alpha);',
-    '}'
-  ].join('\n')
+  fragmentShader: FRAGMENT_SHADER
 });
 
-},{"../core/shader":126}],170:[function(_dereq_,module,exports){
+},{"../core/shader":131}],175:[function(_dereq_,module,exports){
+var registerShader = _dereq_('../core/shader').registerShader;
+var THREE = _dereq_('../lib/three');
+
+/**
+ * Flat shader using THREE.ShadowMaterial.
+ */
+module.exports.Shader = registerShader('shadow', {
+  schema: {
+    opacity: {default: 0.5},
+    transparent: {default: true},
+    alphaToCoverage: {default: true}
+  },
+
+  /**
+   * Initializes the shader.
+   * Adds a reference from the scene to this entity as the camera.
+   */
+  init: function (data) {
+    this.rendererSystem = this.el.sceneEl.systems.renderer;
+    this.material = new THREE.ShadowMaterial();
+  },
+
+  update: function (data) {
+    this.material.opacity = data.opacity;
+    this.material.alphaToCoverage = data.alphaToCoverage;
+    this.material.transparent = data.transparent;
+  }
+});
+
+
+},{"../core/shader":131,"../lib/three":169}],176:[function(_dereq_,module,exports){
 var registerShader = _dereq_('../core/shader').registerShader;
 var THREE = _dereq_('../lib/three');
 var utils = _dereq_('../utils/');
@@ -71257,7 +73463,7 @@ module.exports.Shader = registerShader('standard', {
     if (sphericalEnvMap) {
       this.el.sceneEl.systems.material.loadTexture(sphericalEnvMap, {src: sphericalEnvMap}, function textureLoaded (texture) {
         self.isLoadingEnvMap = false;
-        texture.mapping = THREE.SphericalReflectionMapping;
+        texture.mapping = THREE.EquirectangularReflectionMapping;
         material.envMap = texture;
         utils.material.handleTextureEvents(self.el, texture);
         material.needsUpdate = true;
@@ -71322,11 +73528,11 @@ function getMaterialData (data, materialData) {
   return materialData;
 }
 
-},{"../core/shader":126,"../lib/three":164,"../utils/":190}],171:[function(_dereq_,module,exports){
-var css = "html.a-fullscreen{bottom:0;left:0;position:fixed;right:0;top:0}html.a-fullscreen body{height:100%;margin:0;overflow:hidden;padding:0;width:100%}html.a-fullscreen .a-canvas{width:100%!important;height:100%!important;top:0!important;left:0!important;right:0!important;bottom:0!important;position:fixed!important}html:not(.a-fullscreen) .a-enter-ar,html:not(.a-fullscreen) .a-enter-vr{right:5px;bottom:5px}:-webkit-full-screen{background-color:transparent}.a-hidden{display:none!important}.a-canvas{height:100%;left:0;position:absolute;top:0;width:100%}.a-canvas.a-grab-cursor:hover{cursor:grab;cursor:-moz-grab;cursor:-webkit-grab}canvas.a-canvas.a-mouse-cursor-hover:hover{cursor:pointer}.a-inspector-loader{background-color:#ed3160;position:fixed;left:3px;top:3px;padding:6px 10px;color:#fff;text-decoration:none;font-size:12px;font-family:Roboto,sans-serif;text-align:center;z-index:99999;width:204px}@keyframes dots-1{from{opacity:0}25%{opacity:1}}@keyframes dots-2{from{opacity:0}50%{opacity:1}}@keyframes dots-3{from{opacity:0}75%{opacity:1}}@-webkit-keyframes dots-1{from{opacity:0}25%{opacity:1}}@-webkit-keyframes dots-2{from{opacity:0}50%{opacity:1}}@-webkit-keyframes dots-3{from{opacity:0}75%{opacity:1}}.a-inspector-loader .dots span{animation:dots-1 2s infinite steps(1);-webkit-animation:dots-1 2s infinite steps(1)}.a-inspector-loader .dots span:first-child+span{animation-name:dots-2;-webkit-animation-name:dots-2}.a-inspector-loader .dots span:first-child+span+span{animation-name:dots-3;-webkit-animation-name:dots-3}a-scene{display:block;position:relative;height:100%;width:100%}a-assets,a-scene audio,a-scene img,a-scene video{display:none}.a-enter-vr-modal,.a-orientation-modal{font-family:Consolas,Andale Mono,Courier New,monospace}.a-enter-vr-modal a{border-bottom:1px solid #fff;padding:2px 0;text-decoration:none;transition:.1s color ease-in}.a-enter-vr-modal a:hover{background-color:#fff;color:#111;padding:2px 4px;position:relative;left:-4px}.a-enter-ar,.a-enter-vr{font-family:sans-serif,monospace;font-size:13px;width:100%;font-weight:200;line-height:16px;position:absolute;right:20px;bottom:20px}.a-enter-ar{right:80px}.a-enter-vr-button,.a-enter-vr-modal,.a-enter-vr-modal a{color:#fff;user-select:none;outline:0}.a-enter-vr-button{background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z' fill='%23fff'/%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat rgba(0,0,0,.35)}.a-enter-ar-button{background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z' fill='%23fff'/%3E%3Cpath d='M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z' fill='%23fff'/%3E%3Cpath d='M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat rgba(0,0,0,.2)}.a-enter-ar-button,.a-enter-vr-button{background-size:90% 90%;border:0;bottom:0;cursor:pointer;min-width:58px;min-height:34px;padding-right:0;padding-top:0;position:absolute;right:0;transition:background-color .05s ease;-webkit-transition:background-color .05s ease;z-index:9999;border-radius:8px;touch-action:manipulation}.a-enter-ar-button{background-size:100% 90%;margin-right:10px;border-radius:7px}.a-enter-ar-button:active,.a-enter-ar-button:hover,.a-enter-vr-button:active,.a-enter-vr-button:hover{background-color:#ef2d5e}.a-enter-vr-button.resethover{background-color:rgba(0,0,0,.35)}[data-a-enter-vr-no-webvr] .a-enter-vr-button{border-color:#666;opacity:.65}[data-a-enter-vr-no-webvr] .a-enter-vr-button:active,[data-a-enter-vr-no-webvr] .a-enter-vr-button:hover{background-color:rgba(0,0,0,.35);cursor:not-allowed}.a-enter-vr-modal{background-color:#666;border-radius:0;display:none;min-height:32px;margin-right:70px;padding:9px;width:280px;right:2%;position:absolute}.a-enter-vr-modal:after{border-bottom:10px solid transparent;border-left:10px solid #666;border-top:10px solid transparent;display:inline-block;content:'';position:absolute;right:-5px;top:5px;width:0;height:0}.a-enter-vr-modal a,.a-enter-vr-modal p{display:inline}.a-enter-vr-modal p{margin:0}.a-enter-vr-modal p:after{content:' '}[data-a-enter-vr-no-headset].a-enter-vr:hover .a-enter-vr-modal,[data-a-enter-vr-no-webvr].a-enter-vr:hover .a-enter-vr-modal{display:block}.a-orientation-modal{background:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E) center/50% 50% no-repeat rgba(244,244,244,1);bottom:0;font-size:14px;font-weight:600;left:0;line-height:20px;right:0;position:fixed;top:0;z-index:9999999}.a-orientation-modal:after{color:#666;content:\"Insert phone into Cardboard holder.\";display:block;position:absolute;text-align:center;top:70%;transform:translateY(-70%);width:100%}.a-orientation-modal button{background:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E) no-repeat;border:none;height:50px;text-indent:-9999px;width:50px}.a-loader-title{background-color:rgba(0,0,0,.6);font-family:sans-serif,monospace;text-align:center;font-size:20px;height:50px;font-weight:300;line-height:50px;position:absolute;right:0;left:0;top:0;color:#fff}.a-modal{background:0 0/50% 50% rgba(0,0,0,.6);bottom:0;font-size:14px;font-weight:600;left:0;line-height:20px;right:0;position:fixed;top:0;z-index:9999999}.a-dialog{position:relative;left:50%;top:50%;transform:translate(-50%,-50%);z-index:199995;width:300px;height:200px;background-size:contain;background-color:#fff;font-family:sans-serif,monospace;font-size:20px;border-radius:3px;padding:6px}.a-dialog-text-container{width:100%;height:70%;align-self:flex-start;display:flex;justify-content:center;align-content:center;flex-direction:column}.a-dialog-text{display:inline-block;font-weight:400;font-size:14pt;margin:8px}.a-dialog-buttons-container{display:inline-flex;align-self:flex-end;width:100%;height:30%}.a-dialog-button{cursor:pointer;align-self:center;opacity:.9;height:80%;width:50%;font-size:12pt;margin:4px;border-radius:2px;text-align:center;border:none;display:inline-block;-webkit-transition:all .25s ease-in-out;transition:all .25s ease-in-out;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.2);user-select:none}.a-dialog-permission-button:hover{box-shadow:0 7px 14px rgba(0,0,0,.2),0 2px 2px rgba(0,0,0,.2)}.a-dialog-allow-button{background-color:#00ceff}.a-dialog-deny-button{background-color:#ff005b}.a-dialog-ok-button{background-color:#00ceff;width:100%}"; (_dereq_("browserify-css").createStyle(css, { "href": "src/style/aframe.css"})); module.exports = css;
-},{"browserify-css":4}],172:[function(_dereq_,module,exports){
+},{"../core/shader":131,"../lib/three":169,"../utils/":196}],177:[function(_dereq_,module,exports){
+var css = "html.a-fullscreen{bottom:0;left:0;position:fixed;right:0;top:0}html.a-fullscreen body{height:100%;margin:0;overflow:hidden;padding:0;width:100%}html.a-fullscreen .a-canvas{width:100%!important;height:100%!important;top:0!important;left:0!important;right:0!important;bottom:0!important;position:fixed!important}html:not(.a-fullscreen) .a-enter-ar,html:not(.a-fullscreen) .a-enter-vr{right:5px;bottom:5px}:-webkit-full-screen{background-color:transparent}.a-hidden{display:none!important}.a-canvas{height:100%;left:0;position:absolute;top:0;width:100%}.a-canvas.a-grab-cursor:hover{cursor:grab;cursor:-moz-grab;cursor:-webkit-grab}canvas.a-canvas.a-mouse-cursor-hover:hover{cursor:pointer}.a-inspector-loader{background-color:#ed3160;position:fixed;left:3px;top:3px;padding:6px 10px;color:#fff;text-decoration:none;font-size:12px;font-family:Roboto,sans-serif;text-align:center;z-index:99999;width:204px}@keyframes dots-1{from{opacity:0}25%{opacity:1}}@keyframes dots-2{from{opacity:0}50%{opacity:1}}@keyframes dots-3{from{opacity:0}75%{opacity:1}}@-webkit-keyframes dots-1{from{opacity:0}25%{opacity:1}}@-webkit-keyframes dots-2{from{opacity:0}50%{opacity:1}}@-webkit-keyframes dots-3{from{opacity:0}75%{opacity:1}}.a-inspector-loader .dots span{animation:dots-1 2s infinite steps(1);-webkit-animation:dots-1 2s infinite steps(1)}.a-inspector-loader .dots span:first-child+span{animation-name:dots-2;-webkit-animation-name:dots-2}.a-inspector-loader .dots span:first-child+span+span{animation-name:dots-3;-webkit-animation-name:dots-3}a-scene{display:block;position:relative;height:100%;width:100%}a-assets,a-scene audio,a-scene img,a-scene video{display:none}.a-enter-vr-modal,.a-orientation-modal{font-family:Consolas,Andale Mono,Courier New,monospace}.a-enter-vr-modal a{border-bottom:1px solid #fff;padding:2px 0;text-decoration:none;transition:.1s color ease-in}.a-enter-vr-modal a:hover{background-color:#fff;color:#111;padding:2px 4px;position:relative;left:-4px}.a-enter-ar,.a-enter-vr{font-family:sans-serif,monospace;font-size:13px;width:100%;font-weight:200;line-height:16px;position:absolute;right:20px;bottom:20px}.a-enter-ar{right:80px}.a-enter-vr-button,.a-enter-vr-modal,.a-enter-vr-modal a{color:#fff;user-select:none;outline:0}.a-enter-vr-button{background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z' fill='%23fff'/%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat rgba(0,0,0,.35)}.a-enter-ar-button{background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z' fill='%23fff'/%3E%3Cpath d='M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z' fill='%23fff'/%3E%3Cpath d='M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat rgba(0,0,0,.2)}.a-enter-ar-button,.a-enter-vr-button{background-size:90% 90%;border:0;bottom:0;cursor:pointer;min-width:58px;min-height:34px;padding-right:0;padding-top:0;position:absolute;right:0;transition:background-color .05s ease;-webkit-transition:background-color .05s ease;z-index:9999;border-radius:8px;touch-action:manipulation}.a-enter-ar-button{background-size:100% 90%;margin-right:10px;border-radius:7px}.a-enter-ar-button:active,.a-enter-ar-button:hover,.a-enter-vr-button:active,.a-enter-vr-button:hover{background-color:#ef2d5e}.a-enter-vr-button.resethover{background-color:rgba(0,0,0,.35)}[data-a-enter-vr-no-webvr] .a-enter-vr-button{border-color:#666;opacity:.65}[data-a-enter-vr-no-webvr] .a-enter-vr-button:active,[data-a-enter-vr-no-webvr] .a-enter-vr-button:hover{background-color:rgba(0,0,0,.35);cursor:not-allowed}.a-enter-vr-modal{background-color:#666;border-radius:0;display:none;min-height:32px;margin-right:70px;padding:9px;width:280px;right:2%;position:absolute}.a-enter-vr-modal:after{border-bottom:10px solid transparent;border-left:10px solid #666;border-top:10px solid transparent;display:inline-block;content:'';position:absolute;right:-5px;top:5px;width:0;height:0}.a-enter-vr-modal a,.a-enter-vr-modal p{display:inline}.a-enter-vr-modal p{margin:0}.a-enter-vr-modal p:after{content:' '}[data-a-enter-vr-no-headset].a-enter-vr:hover .a-enter-vr-modal,[data-a-enter-vr-no-webvr].a-enter-vr:hover .a-enter-vr-modal{display:block}.a-orientation-modal{background:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E) center/50% 50% no-repeat rgba(244,244,244,1);bottom:0;font-size:14px;font-weight:600;left:0;line-height:20px;right:0;position:fixed;top:0;z-index:9999999}.a-orientation-modal:after{color:#666;content:\"Insert phone into Cardboard holder.\";display:block;position:absolute;text-align:center;top:70%;transform:translateY(-70%);width:100%}.a-orientation-modal button{background:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E) no-repeat;border:none;height:50px;text-indent:-9999px;width:50px}.a-loader-title{background-color:rgba(0,0,0,.6);font-family:sans-serif,monospace;text-align:center;font-size:20px;height:50px;font-weight:300;line-height:50px;position:absolute;right:0;left:0;top:0;color:#fff}.a-modal{background:0 0/50% 50% rgba(0,0,0,.6);bottom:0;font-size:14px;font-weight:600;left:0;line-height:20px;right:0;position:fixed;top:0;z-index:9999999}.a-dialog{position:relative;left:50%;top:50%;transform:translate(-50%,-50%);z-index:199995;width:300px;height:200px;background-size:contain;background-color:#fff;font-family:sans-serif,monospace;font-size:20px;border-radius:3px;padding:6px}.a-dialog-text-container{width:100%;height:70%;align-self:flex-start;display:flex;justify-content:center;align-content:center;flex-direction:column}.a-dialog-text{display:inline-block;font-weight:400;font-size:14pt;margin:8px}.a-dialog-buttons-container{display:inline-flex;align-self:flex-end;width:100%;height:30%}.a-dialog-button{cursor:pointer;align-self:center;opacity:.9;height:80%;width:50%;font-size:12pt;margin:4px;border-radius:2px;text-align:center;border:none;display:inline-block;-webkit-transition:all .25s ease-in-out;transition:all .25s ease-in-out;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.2);user-select:none}.a-dialog-permission-button:hover{box-shadow:0 7px 14px rgba(0,0,0,.2),0 2px 2px rgba(0,0,0,.2)}.a-dialog-allow-button{background-color:#00ceff}.a-dialog-deny-button{background-color:#ff005b}.a-dialog-ok-button{background-color:#00ceff;width:100%}.a-dom-overlay:not(.a-no-style){overflow:hidden;position:absolute;pointer-events:none;box-sizing:border-box;bottom:0;left:0;right:0;top:0;padding:1em}.a-dom-overlay:not(.a-no-style)>*{pointer-events:auto}"; (_dereq_("browserify-css").createStyle(css, { "href": "src/style/aframe.css"})); module.exports = css;
+},{"browserify-css":4}],178:[function(_dereq_,module,exports){
 var css = ".rs-base{background-color:#333;color:#fafafa;border-radius:0;font:10px monospace;left:5px;line-height:1em;opacity:.85;overflow:hidden;padding:10px;position:fixed;top:5px;width:300px;z-index:10000}.rs-base div.hidden{display:none}.rs-base h1{color:#fff;cursor:pointer;font-size:1.4em;font-weight:300;margin:0 0 5px;padding:0}.rs-group{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-flex-direction:column-reverse;flex-direction:column-reverse;margin-bottom:5px}.rs-group:last-child{margin-bottom:0}.rs-counter-base{align-items:center;display:-webkit-box;display:-webkit-flex;display:flex;height:10px;-webkit-justify-content:space-between;justify-content:space-between;margin:2px 0}.rs-counter-base.alarm{color:#b70000;text-shadow:0 0 0 #b70000,0 0 1px #fff,0 0 1px #fff,0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff,0 0 4px #fff,0 0 4px #fff}.rs-counter-id{font-weight:300;-webkit-box-ordinal-group:0;-webkit-order:0;order:0;width:54px}.rs-counter-value{font-weight:300;-webkit-box-ordinal-group:1;-webkit-order:1;order:1;text-align:right;width:35px}.rs-canvas{-webkit-box-ordinal-group:2;-webkit-order:2;order:2}@media (min-width:480px){.rs-base{left:20px;top:20px}}"; (_dereq_("browserify-css").createStyle(css, { "href": "src/style/rStats.css"})); module.exports = css;
-},{"browserify-css":4}],173:[function(_dereq_,module,exports){
+},{"browserify-css":4}],179:[function(_dereq_,module,exports){
 var constants = _dereq_('../constants/');
 var registerSystem = _dereq_('../core/system').registerSystem;
 
@@ -71599,16 +73805,15 @@ function removeDefaultCamera (sceneEl) {
   sceneEl.removeChild(defaultCamera);
 }
 
-},{"../constants/":108,"../core/system":127}],174:[function(_dereq_,module,exports){
+},{"../constants/":113,"../core/system":132}],180:[function(_dereq_,module,exports){
 var geometries = _dereq_('../core/geometry').geometries;
 var registerSystem = _dereq_('../core/system').registerSystem;
-var THREE = _dereq_('../lib/three');
 
 /**
  * System for geometry component.
  * Handle geometry caching.
  *
- * @member {object} cache - Mapping of stringified component data to THREE.Geometry objects.
+ * @member {object} cache - Mapping of stringified component data to THREE.BufferGeometry objects.
  * @member {object} cacheCount - Keep track of number of entities using a geometry to
  *         know whether to dispose on removal.
  */
@@ -71705,7 +73910,7 @@ function createGeometry (data) {
   if (!GeometryClass) { throw new Error('Unknown geometry `' + geometryType + '`'); }
 
   geometryInstance.init(data);
-  return toBufferGeometry(geometryInstance.geometry, data.buffer);
+  return geometryInstance.geometry;
 }
 
 /**
@@ -71722,26 +73927,20 @@ function incrementCacheCount (cacheCount, hash) {
   cacheCount[hash] = cacheCount[hash] === undefined ? 1 : cacheCount[hash] + 1;
 }
 
-/**
- * Transform geometry to BufferGeometry if `doBuffer`.
- *
- * @param {object} geometry
- * @param {boolean} doBuffer
- * @returns {object} Geometry.
- */
-function toBufferGeometry (geometry, doBuffer) {
-  var bufferGeometry;
-  if (!doBuffer) { return geometry; }
-
-  bufferGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
-  bufferGeometry.metadata = {type: geometry.type, parameters: geometry.parameters || {}};
-  geometry.dispose();  // Dispose no longer needed non-buffer geometry.
-  return bufferGeometry;
-}
-
-},{"../core/geometry":117,"../core/system":127,"../lib/three":164}],175:[function(_dereq_,module,exports){
+},{"../core/geometry":122,"../core/system":132}],181:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var THREE = _dereq_('../lib/three');
+
+function fetchScript (src) {
+  return new Promise(function (resolve, reject) {
+    var script = document.createElement('script');
+    document.body.appendChild(script);
+    script.onload = resolve;
+    script.onerror = reject;
+    script.async = true;
+    script.src = src;
+  });
+}
 
 /**
  * glTF model system.
@@ -71750,32 +73949,42 @@ var THREE = _dereq_('../lib/three');
  * provided externally.
  *
  * @param {string} dracoDecoderPath - Base path from which to load Draco decoder library.
+ * @param {string} meshoptDecoderPath - Full path from which to load Meshopt decoder.
  */
 module.exports.System = registerSystem('gltf-model', {
   schema: {
-    dracoDecoderPath: {default: ''}
+    dracoDecoderPath: {default: ''},
+    meshoptDecoderPath: {default: ''}
   },
 
   init: function () {
-    var path = this.data.dracoDecoderPath;
-    this.dracoLoader = new THREE.DRACOLoader();
-    this.dracoLoader.setDecoderPath(path);
+    this.update();
   },
 
   update: function () {
-    var path;
-    if (this.dracoLoader) { return; }
-    path = this.data.dracoDecoderPath;
-    this.dracoLoader = new THREE.DRACOLoader();
-    this.dracoLoader.setDecoderPath(path);
+    var dracoDecoderPath = this.data.dracoDecoderPath;
+    var meshoptDecoderPath = this.data.meshoptDecoderPath;
+    if (!this.dracoLoader && dracoDecoderPath) {
+      this.dracoLoader = new THREE.DRACOLoader();
+      this.dracoLoader.setDecoderPath(dracoDecoderPath);
+    }
+    if (!this.meshoptDecoder && meshoptDecoderPath) {
+      this.meshoptDecoder = fetchScript(meshoptDecoderPath)
+        .then(function () { return window.MeshoptDecoder.ready; })
+        .then(function () { return window.MeshoptDecoder; });
+    }
   },
 
   getDRACOLoader: function () {
     return this.dracoLoader;
+  },
+
+  getMeshoptDecoder: function () {
+    return this.meshoptDecoder;
   }
 });
 
-},{"../core/system":127,"../lib/three":164}],176:[function(_dereq_,module,exports){
+},{"../core/system":132,"../lib/three":169}],182:[function(_dereq_,module,exports){
 _dereq_('./camera');
 _dereq_('./geometry');
 _dereq_('./gltf-model');
@@ -71787,7 +73996,7 @@ _dereq_('./tracked-controls-webvr');
 _dereq_('./tracked-controls-webxr');
 _dereq_('./webxr');
 
-},{"./camera":173,"./geometry":174,"./gltf-model":175,"./light":177,"./material":178,"./renderer":179,"./shadow":180,"./tracked-controls-webvr":181,"./tracked-controls-webxr":182,"./webxr":183}],177:[function(_dereq_,module,exports){
+},{"./camera":179,"./geometry":180,"./gltf-model":181,"./light":183,"./material":184,"./renderer":185,"./shadow":186,"./tracked-controls-webvr":187,"./tracked-controls-webxr":188,"./webxr":189}],183:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var bind = _dereq_('../utils/bind');
 var constants = _dereq_('../constants/');
@@ -71873,7 +74082,7 @@ module.exports.System = registerSystem('light', {
   }
 });
 
-},{"../constants/":108,"../core/system":127,"../utils/bind":184}],178:[function(_dereq_,module,exports){
+},{"../constants/":113,"../core/system":132,"../utils/bind":190}],184:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var THREE = _dereq_('../lib/three');
 var utils = _dereq_('../utils/');
@@ -72278,7 +74487,7 @@ function fixVideoAttributes (videoEl) {
   return videoEl;
 }
 
-},{"../core/system":127,"../lib/three":164,"../utils/":190,"../utils/material":194}],179:[function(_dereq_,module,exports){
+},{"../core/system":132,"../lib/three":169,"../utils/":196,"../utils/material":200}],185:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var utils = _dereq_('../utils/');
 var THREE = _dereq_('../lib/three');
@@ -72340,7 +74549,7 @@ module.exports.System = registerSystem('renderer', {
   }
 });
 
-},{"../core/system":127,"../lib/three":164,"../utils/":190}],180:[function(_dereq_,module,exports){
+},{"../core/system":132,"../lib/three":169,"../utils/":196}],186:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var THREE = _dereq_('../lib/three');
 
@@ -72395,7 +74604,7 @@ module.exports.System = registerSystem('shadow', {
   }
 });
 
-},{"../core/system":127,"../lib/three":164}],181:[function(_dereq_,module,exports){
+},{"../core/system":132,"../lib/three":169}],187:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var utils = _dereq_('../utils');
 var isWebXRAvailable = utils.device.isWebXRAvailable;
@@ -72463,7 +74672,7 @@ module.exports.System = registerSystem('tracked-controls-webvr', {
   }
 });
 
-},{"../core/system":127,"../utils":190}],182:[function(_dereq_,module,exports){
+},{"../core/system":132,"../utils":196}],188:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 var utils = _dereq_('../utils');
 
@@ -72548,7 +74757,7 @@ module.exports.System = registerSystem('tracked-controls-webxr', {
   }
 });
 
-},{"../core/system":127,"../utils":190}],183:[function(_dereq_,module,exports){
+},{"../core/system":132,"../utils":196}],189:[function(_dereq_,module,exports){
 var registerSystem = _dereq_('../core/system').registerSystem;
 
 var utils = _dereq_('../utils/');
@@ -72574,15 +74783,22 @@ module.exports.System = registerSystem('webxr', {
     this.sessionReferenceSpaceType = data.referenceSpaceType;
 
     if (data.overlayElement) {
+      // Update WebXR to support light-estimation
+      data.overlayElement.classList.remove('a-dom-overlay');
+      if (!data.optionalFeatures.includes('dom-overlay')) {
+        data.optionalFeatures.push('dom-overlay');
+        this.el.setAttribute('webxr', data);
+      }
       this.warnIfFeatureNotRequested('dom-overlay');
       this.sessionConfiguration.domOverlay = {root: data.overlayElement};
+      data.overlayElement.classList.add('a-dom-overlay');
     }
   },
 
   wasFeatureRequested: function (feature) {
     // Features available by default for immersive sessions don't need to
     // be requested explicitly.
-    if (feature === 'viewer' || feature === 'local') return true;
+    if (feature === 'viewer' || feature === 'local') { return true; }
 
     if (this.sessionConfiguration.requiredFeatures.includes(feature) ||
         this.sessionConfiguration.optionalFeatures.includes(feature)) {
@@ -72601,7 +74817,7 @@ module.exports.System = registerSystem('webxr', {
   }
 });
 
-},{"../core/system":127,"../utils/":190}],184:[function(_dereq_,module,exports){
+},{"../core/system":132,"../utils/":196}],190:[function(_dereq_,module,exports){
 /**
  * Faster version of Function.prototype.bind
  * @param {Function} fn - Function to wrap.
@@ -72618,7 +74834,7 @@ module.exports = function bind (fn, ctx/* , arg1, arg2 */) {
   })(Array.prototype.slice.call(arguments, 2));
 };
 
-},{}],185:[function(_dereq_,module,exports){
+},{}],191:[function(_dereq_,module,exports){
 /* global THREE */
 var debug = _dereq_('./debug');
 var extend = _dereq_('object-assign');
@@ -72730,7 +74946,7 @@ module.exports.toVector3 = function (vec3) {
   return new THREE.Vector3(vec3.x, vec3.y, vec3.z);
 };
 
-},{"./debug":186,"object-assign":25}],186:[function(_dereq_,module,exports){
+},{"./debug":192,"object-assign":25}],192:[function(_dereq_,module,exports){
 (function (process){(function (){
 var debugLib = _dereq_('debug');
 var extend = _dereq_('object-assign');
@@ -72827,7 +75043,7 @@ module.exports = debug;
 
 }).call(this)}).call(this,_dereq_('_process'))
 
-},{"_process":5,"debug":9,"object-assign":25}],187:[function(_dereq_,module,exports){
+},{"_process":5,"debug":9,"object-assign":25}],193:[function(_dereq_,module,exports){
 (function (process){(function (){
 var error = _dereq_('debug')('device:error');
 
@@ -73020,7 +75236,7 @@ module.exports.isNodeEnvironment = !module.exports.isBrowserEnvironment;
 
 }).call(this)}).call(this,_dereq_('_process'))
 
-},{"_process":5,"debug":9}],188:[function(_dereq_,module,exports){
+},{"_process":5,"debug":9}],194:[function(_dereq_,module,exports){
 /**
  * Split a delimited component property string (e.g., `material.color`) to an object
  * containing `component` name and `property` name. If there is no delimiter, just return the
@@ -73082,7 +75298,7 @@ module.exports.setComponentProperty = function (el, name, value, delimiter) {
   el.setAttribute(name, value);
 };
 
-},{}],189:[function(_dereq_,module,exports){
+},{}],195:[function(_dereq_,module,exports){
 module.exports = function forceCanvasResizeSafariMobile (canvasEl) {
   var width = canvasEl.style.width;
   var height = canvasEl.style.height;
@@ -73098,7 +75314,7 @@ module.exports = function forceCanvasResizeSafariMobile (canvasEl) {
   }, 200);
 };
 
-},{}],190:[function(_dereq_,module,exports){
+},{}],196:[function(_dereq_,module,exports){
 /* global location */
 
 /* Centralized place to reference utilities since utils is exposed to the user. */
@@ -73428,7 +75644,7 @@ module.exports.findAllScenes = function (el) {
 // Must be at bottom to avoid circular dependency.
 module.exports.srcLoader = _dereq_('./src-loader');
 
-},{"./bind":184,"./coordinates":185,"./debug":186,"./device":187,"./entity":188,"./forceCanvasResizeSafariMobile":189,"./is-ie11":192,"./material":194,"./object-pool":195,"./split":196,"./src-loader":197,"./styleParser":198,"./tracked-controls":199,"deep-assign":11,"object-assign":25}],191:[function(_dereq_,module,exports){
+},{"./bind":190,"./coordinates":191,"./debug":192,"./device":193,"./entity":194,"./forceCanvasResizeSafariMobile":195,"./is-ie11":198,"./material":200,"./object-pool":201,"./split":202,"./src-loader":203,"./styleParser":204,"./tracked-controls":205,"deep-assign":11,"object-assign":25}],197:[function(_dereq_,module,exports){
 // Safari regression introduced in iOS 12 and remains in iOS 13.
 // https://stackoverflow.com/questions/62717621/white-space-at-page-bottom-after-device-rotation-in-ios-safari
 window.addEventListener('orientationchange', function () {
@@ -73443,7 +75659,7 @@ window.addEventListener('orientationchange', function () {
   }, 500);
 });
 
-},{}],192:[function(_dereq_,module,exports){
+},{}],198:[function(_dereq_,module,exports){
 // https://stackoverflow.com/a/17907562
 function getInternetExplorerVersion () {
   var version = -1;
@@ -73461,7 +75677,7 @@ function getInternetExplorerVersion () {
 
 module.exports = getInternetExplorerVersion() === 11;
 
-},{}],193:[function(_dereq_,module,exports){
+},{}],199:[function(_dereq_,module,exports){
 /**
  * Check if device is iOS and older than version 10.
  */
@@ -73469,7 +75685,7 @@ module.exports = function isIOSOlderThan10 (userAgent) {
   return /(iphone|ipod|ipad).*os.(7_|8_|9_)/i.test(userAgent);
 };
 
-},{}],194:[function(_dereq_,module,exports){
+},{}],200:[function(_dereq_,module,exports){
 var THREE = _dereq_('../lib/three');
 
 var HLS_MIMETYPES = ['application/x-mpegurl', 'application/vnd.apple.mpegurl'];
@@ -73640,7 +75856,7 @@ module.exports.isHLS = function (src, type) {
   return false;
 };
 
-},{"../lib/three":164}],195:[function(_dereq_,module,exports){
+},{"../lib/three":169}],201:[function(_dereq_,module,exports){
 /*
   Adapted deePool by Kyle Simpson.
   MIT License: http://getify.mit-license.org
@@ -73731,7 +75947,7 @@ function removeUnusedKeys (obj, schema) {
 }
 module.exports.removeUnusedKeys = removeUnusedKeys;
 
-},{}],196:[function(_dereq_,module,exports){
+},{}],202:[function(_dereq_,module,exports){
 /**
  * String split with cached result.
  */
@@ -73748,7 +75964,7 @@ module.exports.split = (function () {
   };
 })();
 
-},{}],197:[function(_dereq_,module,exports){
+},{}],203:[function(_dereq_,module,exports){
 /* global Image, XMLHttpRequest */
 var debug = _dereq_('./debug');
 
@@ -73907,7 +76123,7 @@ module.exports = {
   validateCubemapSrc: validateCubemapSrc
 };
 
-},{"./debug":186}],198:[function(_dereq_,module,exports){
+},{"./debug":192}],204:[function(_dereq_,module,exports){
 /**
  * Utils for parsing style-like strings (e.g., "primitive: box; width: 5; height: 4.5").
  * Some code adapted from `style-attr` (https://github.com/joshwnj/style-attr)
@@ -74060,7 +76276,7 @@ function styleStringify (obj) {
 
 function upperCase (str) { return str[1].toUpperCase(); }
 
-},{}],199:[function(_dereq_,module,exports){
+},{}],205:[function(_dereq_,module,exports){
 var DEFAULT_HANDEDNESS = _dereq_('../constants').DEFAULT_HANDEDNESS;
 var AXIS_LABELS = ['x', 'y', 'z', 'w'];
 var NUM_HANDS = 2;  // Number of hands in a pair. Should always be 2.
@@ -74302,7 +76518,7 @@ module.exports.onButtonEvent = function (id, evtName, component, hand) {
   }
 };
 
-},{"../constants":108}],200:[function(_dereq_,module,exports){
+},{"../constants":113}],206:[function(_dereq_,module,exports){
 /**
  * @author richt / http://richt.me
  * @author WestLangley / http://github.com/WestLangley
@@ -74415,7 +76631,7 @@ THREE.DeviceOrientationControls = function ( object ) {
 
 };
 
-},{}],201:[function(_dereq_,module,exports){
+},{}],207:[function(_dereq_,module,exports){
 window.glStats = function () {
 
     var _rS = null;
@@ -74676,7 +76892,7 @@ if (typeof module === 'object') {
   };
 }
 
-},{}],202:[function(_dereq_,module,exports){
+},{}],208:[function(_dereq_,module,exports){
 // performance.now() polyfill from https://gist.github.com/paulirish/5438650
 'use strict';
 
@@ -75131,7 +77347,7 @@ if (typeof module === 'object') {
   module.exports = window.rStats;
 }
 
-},{}],203:[function(_dereq_,module,exports){
+},{}],209:[function(_dereq_,module,exports){
 // https://stackoverflow.com/a/36213464
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position){
@@ -75140,7 +77356,7 @@ if (!String.prototype.startsWith) {
   };
 }
 
-},{}],204:[function(_dereq_,module,exports){
+},{}],210:[function(_dereq_,module,exports){
 /*
  * Copyright 2015 Google Inc. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -75202,7 +77418,7 @@ Util.isLandscapeMode = function() {
 
 module.exports = Util;
 
-},{}],205:[function(_dereq_,module,exports){
+},{}],211:[function(_dereq_,module,exports){
 /*
  * Copyright 2015 Google Inc. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -75278,6 +77494,6 @@ function getWakeLock() {
 
 module.exports = getWakeLock();
 
-},{"./util.js":204}]},{},[162])(162)
+},{"./util.js":210}]},{},[167])(167)
 });
 //# sourceMappingURL=aframe-master.js.map

@@ -8,6 +8,8 @@ require('./generic-tracked-controller-controls');
 require('./gltf-model');
 require('./hand-tracking-controls');
 require('./hand-controls');
+require('./hide-on-enter-ar');
+require('./hp-mixed-reality-controls');
 require('./layer');
 require('./laser-controls');
 require('./light');
@@ -36,6 +38,7 @@ require('./vive-focus-controls');
 require('./wasd-controls');
 require('./windows-motion-controls');
 
+require('./scene/ar-hit-test');
 require('./scene/background');
 require('./scene/debug');
 require('./scene/device-orientation-permission-ui');
