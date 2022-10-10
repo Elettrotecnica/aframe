@@ -109,7 +109,7 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     // the group. See `PropertyBinding.findNode`:
     // https://github.com/mrdoob/three.js/blob/dev/src/animation/PropertyBinding.js#L211
     el.object3D.uuid = node.uuid;
-    node.uuid = THREE.Math.generateUUID();
+    node.uuid = THREE.MathUtils.generateUUID();
 
     return el;
   },
