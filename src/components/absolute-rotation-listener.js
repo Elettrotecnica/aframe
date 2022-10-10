@@ -36,9 +36,9 @@ module.exports.Component = registerComponent('absolute-rotation-listener', {
         newValue.z += el.object3D.rotation.z;
         el = el.parentElement;
       }
-      newValue.x = THREE.Math.radToDeg(newValue.x);
-      newValue.y = THREE.Math.radToDeg(newValue.y);
-      newValue.z = THREE.Math.radToDeg(newValue.z);
+      newValue.x = THREE.MathUtils.radToDeg(newValue.x);
+      newValue.y = THREE.MathUtils.radToDeg(newValue.y);
+      newValue.z = THREE.MathUtils.radToDeg(newValue.z);
       return newValue;
     };
   })()
