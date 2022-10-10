@@ -5,7 +5,6 @@
 <p align="center"><b>A web framework for building virtual reality experiences.</b></p>
 
 <p align="center">
-  <a href="https://travis-ci.org/aframevr/aframe"><img src="https://img.shields.io/travis/aframevr/aframe.svg?style=flat-square" alt="Build Status"></a>
   <a href="https://codecov.io/gh/aframevr/aframe">
     <img src="https://codecov.io/gh/aframevr/aframe/branch/master/graph/badge.svg" alt="Coverage Status">
   </a>
@@ -27,21 +26,12 @@
   &mdash;
   <a href="https://aframe.io/school/">School</a>
   &mdash;
-  <a href="https://aframe.io/slack-invite/">Slack</a>
+  <a href="https://aframevr.slack.com/join/shared_invite/zt-f6rne3ly-ekVaBU~Xu~fsZHXr56jacQ">Slack</a>
   &mdash;
   <a href="https://aframe.io/blog/">Blog</a>
   &mdash;
   <a href="https://aframe.io/subscribe/">Newsletter</a>
 </div>
-
-<h3 align="center">Special Sponsors</h3>
-<!--special start-->
-<p align="center">
-  <a href="https://planetvoodoo.org/" target="_blank">
-    <img width="120px" src="https://user-images.githubusercontent.com/39342/112707090-da492580-8e65-11eb-88c5-be39f48544f6.jpg">
-  </a>
-</p>  
-<!--special end-->
 
 ## Examples
 
@@ -112,7 +102,7 @@ and publishing now, remix the starter example on:
 ```html
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   </head>
   <body>
     <a-scene>
@@ -127,7 +117,7 @@ and publishing now, remix the starter example on:
 ```
 
 With A-Frame's [entity-component
-architecture](https://aframe.io/docs/1.2.0/introduction/entity-component-system.html), we can drop in community
+architecture](https://aframe.io/docs/1.3.0/introduction/entity-component-system.html), we can drop in community
 components from the ecosystem (e.g., ocean, physics) and plug them into our
 objects straight from HTML:
 
@@ -136,10 +126,10 @@ objects straight from HTML:
 ```html
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-particle-system-component@1.0.x/dist/aframe-particle-system-component.min.js"></script>
     <script src="https://unpkg.com/aframe-extras.ocean@%5E3.5.x/dist/aframe-extras.ocean.min.js"></script>
-    <script src="https://unpkg.com/aframe-gradient-sky@1.2.0/dist/gradientsky.min.js"></script>
+    <script src="https://unpkg.com/aframe-gradient-sky@1.3.0/dist/gradientsky.min.js"></script>
   </head>
   <body>
     <a-scene>
@@ -167,11 +157,11 @@ objects straight from HTML:
 
 ### Builds
 
-To use the latest stable build of A-Frame, include [`aframe.min.js`](https://aframe.io/releases/1.2.0/aframe.min.js):
+To use the latest stable build of A-Frame, include [`aframe.min.js`](https://aframe.io/releases/1.3.0/aframe.min.js):
 
 ```js
 <head>
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 </head>
 ```
 
@@ -210,7 +200,7 @@ For questions and support, [ask on StackOverflow](https://stackoverflow.com/ques
 
 ## Stay in Touch
 
-- To hang out with the community, [join the A-Frame Slack](https://aframe.io/slack-invite/).
+- To hang out with the community, [join the A-Frame Slack](https://aframevr.slack.com/join/shared_invite/zt-f6rne3ly-ekVaBU~Xu~fsZHXr56jacQ).
 - [Follow `A Week of A-Frame` on the A-Frame blog](https://aframe.io/blog).
 - [Follow @aframevr on Twitter](https://twitter.com/aframevr).
 - [Subscribe to the Newsletter](https://aframe.io/subscribe/).
@@ -225,7 +215,7 @@ And get in touch with the maintainers!
 
 Get involved! Check out the [Contributing Guide](CONTRIBUTING.md) for how to get started.
 
-You can also support development by [buying a gorgeous A-Frame t-shirt with exclusive designs](https://teespring.com/stores/aframe)
+You can also support development by [buying a gorgeous A-Frame t-shirt with exclusive designs](https://cottonbureau.com/products/a-frame-og#/9479538/tee-men-standard-tee-vintage-black-tri-blend-s)
 
 ## License
 

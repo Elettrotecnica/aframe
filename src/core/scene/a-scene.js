@@ -214,7 +214,7 @@ module.exports.AScene = registerElement('a-scene', {
         window.removeEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
         window.removeEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
         window.removeEventListener('sessionend', this.resize);
-        this.renderer.xr.dispose();
+        this.renderer.dispose();
       }
     },
 
@@ -293,6 +293,7 @@ module.exports.AScene = registerElement('a-scene', {
 
         // Has VR.
         if (this.checkHeadsetConnected() || this.isMobile) {
+          var rendererSystem = self.getAttribute('renderer');
           vrManager.enabled = true;
 
           if (this.hasWebXR) {
@@ -309,7 +310,9 @@ module.exports.AScene = registerElement('a-scene', {
                 function requestSuccess (xrSession) {
                   self.xrSession = xrSession;
                   vrManager.layersEnabled = xrInit.requiredFeatures.indexOf('layers') !== -1;
-                  vrManager.setSession(xrSession);
+                  vrManager.setSession(xrSession).then(function () {
+                    vrManager.setFoveation(rendererSystem.foveationLevel);
+                  });
                   xrSession.addEventListener('end', self.exitVRBound);
                   enterVRSuccess(resolve);
                 },
@@ -328,10 +331,8 @@ module.exports.AScene = registerElement('a-scene', {
               enterVRSuccess();
               return Promise.resolve();
             }
-            var rendererSystem = this.getAttribute('renderer');
             var presentationAttributes = {
-              highRefreshRate: rendererSystem.highRefreshRate,
-              foveationLevel: rendererSystem.foveationLevel
+              highRefreshRate: rendererSystem.highRefreshRate
             };
 
             return vrDisplay.requestPresent([{
@@ -378,7 +379,6 @@ module.exports.AScene = registerElement('a-scene', {
             requestFullscreen(self.canvas);
           }
 
-          self.renderer.setAnimationLoop(self.render);
           self.resize();
           if (resolve) { resolve(); }
         }
@@ -806,42 +806,17 @@ module.exports.AScene = registerElement('a-scene', {
 });
 
 /**
- * Return the canvas size where the scene will be rendered.
- * Will be always the window size except when the scene is embedded.
- * The parent size (less than max size) will be returned in that case.
+ * Return size constrained to maxSize - maintaining aspect ratio.
  *
- * @param {object} canvasEl - the canvas element
- * @param {boolean} embedded - Is the scene embedded?
- * @param {object} max - Max size parameters
- * @param {boolean} isVR - If in VR
- */
-function getCanvasSize (canvasEl, embedded, maxSize, isVR) {
-  if (!canvasEl.parentElement) { return {height: 0, width: 0}; }
-  if (embedded) {
-    return {
-      height: canvasEl.parentElement.offsetHeight,
-      width: canvasEl.parentElement.offsetWidth
-    };
-  }
-  return getMaxSize(maxSize, isVR);
-}
-
-/**
- * Return the canvas size. Will be the window size unless that size is greater than the
- * maximum size (1920x1920 by default).  The constrained size will be returned in that case,
- * maintaining aspect ratio
- *
+ * @param {object} size - size parameters (width and height).
  * @param {object} maxSize - Max size parameters (width and height).
- * @param {boolean} isVR - If in VR.
  * @returns {object} Width and height.
  */
-function getMaxSize (maxSize, isVR) {
+function constrainSizeTo (size, maxSize) {
   var aspectRatio;
-  var size;
   var pixelRatio = window.devicePixelRatio;
 
-  size = {height: document.body.offsetHeight, width: document.body.offsetWidth};
-  if (!maxSize || isVR || (maxSize.width === -1 && maxSize.height === -1)) {
+  if (!maxSize || (maxSize.width === -1 && maxSize.height === -1)) {
     return size;
   }
 
@@ -863,6 +838,49 @@ function getMaxSize (maxSize, isVR) {
   }
 
   return size;
+}
+
+/**
+ * Return the canvas size where the scene will be rendered.
+ * Will be always the window size except when the scene is embedded.
+ * The parent size will be returned in that case.
+ * the returned size will be constrained to the maxSize maintaining aspect ratio.
+ *
+ * @param {object} canvasEl - the canvas element
+ * @param {boolean} embedded - Is the scene embedded?
+ * @param {object} max - Max size parameters
+ * @param {boolean} isVR - If in VR
+ */
+function getCanvasSize (canvasEl, embedded, maxSize, isVR) {
+  if (!canvasEl.parentElement) { return {height: 0, width: 0}; }
+  if (embedded) {
+    var size;
+    size = {
+      height: canvasEl.parentElement.offsetHeight,
+      width: canvasEl.parentElement.offsetWidth
+    };
+    return constrainSizeTo(size, maxSize);
+  }
+  return getMaxSize(maxSize, isVR);
+}
+
+/**
+ * Return the canvas size. Will be the window size unless that size is greater than the
+ * maximum size (1920x1920 by default).  The constrained size will be returned in that case,
+ * maintaining aspect ratio
+ *
+ * @param {object} maxSize - Max size parameters (width and height).
+ * @param {boolean} isVR - If in VR.
+ * @returns {object} Width and height.
+ */
+function getMaxSize (maxSize, isVR) {
+  var size;
+  size = {height: document.body.offsetHeight, width: document.body.offsetWidth};
+  if (isVR) {
+    return size;
+  } else {
+    return constrainSizeTo(size, maxSize);
+  }
 }
 
 function requestFullscreen (canvas) {

@@ -68,24 +68,30 @@ function HitTest (renderer, hitTestSourceDetails) {
 HitTest.prototype.previousFrameAnchors = new Set();
 HitTest.prototype.anchorToObject3D = new Map();
 
+function warnAboutHitTest (e) {
+  console.warn(e.message);
+  console.warn('Cannot requestHitTestSource Are you missing: webxr="optionalFeatures: hit-test;" from <a-scene>?');
+}
+
 HitTest.prototype.sessionStart = function sessionStart (hitTestSourceDetails) {
   this.session = this.renderer.xr.getSession();
-  try {
-    if (hitTestSourceDetails.space) {
-      this.session.requestHitTestSource(hitTestSourceDetails)
-      .then(function (xrHitTestSource) {
-        this.xrHitTestSource = xrHitTestSource;
-      }.bind(this));
-    } else if (hitTestSourceDetails.profile) {
-      this.session.requestHitTestSourceForTransientInput(hitTestSourceDetails)
-      .then(function (xrHitTestSource) {
-        this.xrHitTestSource = xrHitTestSource;
-        this.transient = true;
-      }.bind(this));
-    }
-  } catch (e) {
-    console.warn(e.message);
-    console.warn('Cannot requestHitTestSource Are you missing: webxr="optionalFeatures: hit-test;" from <a-scene>?');
+  if (!('requestHitTestSource' in this.session)) {
+    warnAboutHitTest({message: 'No requestHitTestSource on the session.'});
+    return;
+  }
+  if (hitTestSourceDetails.space) {
+    this.session.requestHitTestSource(hitTestSourceDetails)
+    .then(function (xrHitTestSource) {
+      this.xrHitTestSource = xrHitTestSource;
+    }.bind(this))
+    .catch(warnAboutHitTest);
+  } else if (hitTestSourceDetails.profile) {
+    this.session.requestHitTestSourceForTransientInput(hitTestSourceDetails)
+    .then(function (xrHitTestSource) {
+      this.xrHitTestSource = xrHitTestSource;
+      this.transient = true;
+    }.bind(this))
+    .catch(warnAboutHitTest);
   }
 };
 
@@ -213,6 +219,13 @@ module.exports.Component = register('ar-hit-test', {
     },
     footprintDepth: {
       default: 0.1
+    },
+    mapSize: {
+      type: 'vec2',
+      default: {
+        x: 0.5,
+        y: 0.5
+      }
     }
   },
 
@@ -257,6 +270,9 @@ module.exports.Component = register('ar-hit-test', {
     }.bind(this));
 
     this.el.sceneEl.renderer.xr.addEventListener('sessionstart', function () {
+      // Don't request Hit Test unless AR (breaks WebXR Emulator)
+      if (!this.el.is('ar-mode')) { return; }
+
       var renderer = this.el.sceneEl.renderer;
       var session = this.session = renderer.xr.getSession();
       this.hasPosedOnce = false;
@@ -319,16 +335,19 @@ module.exports.Component = register('ar-hit-test', {
         if (this.hasPosedOnce === true) {
           this.bboxMesh.visible = false;
 
-          object = this.data.target.object3D;
           // if we have a target with a 3D object then automatically generate an anchor for it.
-          if (this.data.target && object) {
-            applyPose.tempFakePose.transform.position.copy(this.bboxMesh.position);
-            applyPose.tempFakePose.transform.orientation.copy(this.bboxMesh.quaternion);
-            applyPose(applyPose.tempFakePose, object, this.bboxOffset);
-            object.visible = true;
+          if (this.data.target) {
+            object = this.data.target.object3D;
 
-            // create an anchor attatched to the object
-            this.hitTest.anchorFromLastHitTestResult(object, this.bboxOffset);
+            if (object) {
+              applyPose.tempFakePose.transform.position.copy(this.bboxMesh.position);
+              applyPose.tempFakePose.transform.orientation.copy(this.bboxMesh.quaternion);
+              applyPose(applyPose.tempFakePose, object, this.bboxOffset);
+              object.visible = true;
+
+              // create an anchor attatched to the object
+              this.hitTest.anchorFromLastHitTestResult(object, this.bboxOffset);
+            }
           }
 
           this.el.emit('ar-hit-test-select', {
@@ -347,10 +366,14 @@ module.exports.Component = register('ar-hit-test', {
     this.makeBBox();
   },
   update: function () {
+    // If it is disabled it's cleaned up
+    if (this.data.enabled === false) {
+      this.hitTest = null;
+      this.bboxMesh.visible = false;
+    }
     if (this.data.target) {
       if (this.data.target.object3D) {
         this.data.target.addEventListener('model-loaded', this.update);
-        this.bboxNeedsUpdate = true;
         this.data.target.object3D.layers.enable(CAM_LAYER);
         this.data.target.object3D.traverse(function (child) {
           child.layers.enable(CAM_LAYER);
@@ -359,6 +382,7 @@ module.exports.Component = register('ar-hit-test', {
         this.data.target.addEventListener('loaded', this.update, {once: true});
       }
     }
+    this.bboxNeedsUpdate = true;
   },
   makeBBox: function () {
     var geometry = new THREE.PlaneGeometry(1, 1);
@@ -377,6 +401,7 @@ module.exports.Component = register('ar-hit-test', {
     var tempImageData;
     var renderer = this.el.sceneEl.renderer;
     var oldRenderTarget, oldBackground;
+    var isXREnabled = renderer.xr.enabled;
     this.bboxMesh.material.map = this.canvasTexture;
     this.bboxMesh.material.needsUpdate = true;
     this.orthoCam.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
@@ -393,12 +418,14 @@ module.exports.Component = register('ar-hit-test', {
 
     oldRenderTarget = renderer.getRenderTarget();
     renderer.setRenderTarget(this.textureTarget);
+    renderer.xr.enabled = false;
     oldBackground = this.el.object3D.background;
     this.el.object3D.overrideMaterial = this.basicMaterial;
     this.el.object3D.background = null;
     renderer.render(this.el.object3D, this.orthoCam);
     this.el.object3D.background = oldBackground;
     this.el.object3D.overrideMaterial = null;
+    renderer.xr.enabled = isXREnabled;
     renderer.setRenderTarget(oldRenderTarget);
     renderer.readRenderTargetPixels(this.textureTarget, 0, 0, 512, 512, this.imageDataArray);
 
@@ -455,6 +482,8 @@ module.exports.Component = register('ar-hit-test', {
         this.bboxMesh.position.y -= this.bboxMesh.scale.y / 2;
         this.bboxOffset.copy(this.bboxMesh.position);
         this.bboxOffset.sub(this.data.target.object3D.position);
+      } else {
+        this.bboxMesh.scale.set(this.data.mapSize.x, 1, this.data.mapSize.y);
       }
     }
 
