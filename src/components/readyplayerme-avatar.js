@@ -17,6 +17,8 @@ var registerComponent = require('../core/component').registerComponent;
  *   of the body. Later model seem to use one single mesh, but it is
  *   possible to generate one that has no hands, when these are not
  *   needed.
+ * - idle eyes animation triggers after a configurable number of
+ *   seconds of inactivity.
  *
  * Model is automatically rotated 180° (default would face the user)
  * and offset 65cm, so that head is at 0 level with respect to its
@@ -32,12 +34,16 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     model: {type: 'model'},
     hands: {type: 'boolean', default: true},
     shirt: {type: 'boolean', default: true},
-    head: {type: 'boolean', default: true}
+    head: {type: 'boolean', default: true},
+    idleTimeout: {type: 'int', default: 10}
   },
 
   init: function () {
     this.model = null;
     this.animations = null;
+    this.idleTimeout = this.data.idleTimeout * 1000;
+    this.idle = this.idleTimeout;
+    this.isIdle = false;
   },
 
   _inflate: function (node) {
@@ -128,6 +134,34 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     return el;
   },
 
+  _startIdle: function () {
+    this.isIdle = true;
+    this.idleAnimation.start();
+  },
+
+  _stopIdle: function () {
+    this.idle = false;
+    this.idleMixer.stopAllAction();
+  },
+
+  tick: function (time, delta) {
+    if (!this.idleMixer) {
+      // Model is not initialized yet.
+      return;
+    }
+
+    this.idle -= delta;
+    if (this.idle <= 0 && !this.isIdle) {
+      this._startIdle();
+    } else if (this.idle > 0 && this.isIdle) {
+      this._stopIdle();
+    }
+
+    if (this.isIdle) {
+      this.idleMixer.update(delta / 1000);
+    }
+  },
+
   update: function () {
     var self = this;
     var el = this.el;
@@ -138,13 +172,36 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     this.remove();
 
     this.el.addEventListener('model-loaded', function (e) {
-      var gltfModel = self.el.components['gltf-model'];
-      // self.animations = gltfModel.animations;
-      // self.mixer = new THREE.AnimationMixer(el.object3D);
-      self.animations = gltfModel.model.animations;
-      self.mixer = gltfModel.model.mixer;
+      const mesh = this.getObject3D('mesh');
 
-      const inflated = self._inflate(gltfModel.model);
+      // When the model comes with animations, get the idle_eyes_2 one
+      // (the 5th one) and set it up so that whenever the model is
+      // still for more than idleTimeout seconds, the animation will
+      // start.
+      if (mesh.animations && mesh.animations[4]) {
+        const idleMixer = new THREE.AnimationMixer(mesh);
+        const idleAnimation = idleMixer.clipAction(mesh.animations[4]);
+        idleAnimation.clampWhenFinished = true;
+        idleAnimation.loop = THREE.LoopPingPong;
+        idleAnimation.repetitions = Infinity;
+        idleAnimation.timeScale = 0.5;
+        idleAnimation.time = 0;
+        idleAnimation.weight = 1;
+
+        this.setAttribute('absolute-position-listener', '');
+        this.addEventListener('absolutePositionChanged', function () {
+          self.idle = self.idleTimeout;
+        });
+        this.setAttribute('absolute-rotation-listener', '');
+        this.addEventListener('absoluteRotationChanged', function () {
+          self.idle = self.idleTimeout;
+        });
+
+        self.idleAnimation = idleAnimation;
+        self.idleMixer = idleMixer;
+      }
+
+      const inflated = self._inflate(mesh);
       if (inflated) {
         el.appendChild(inflated);
       }
