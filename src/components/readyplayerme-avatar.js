@@ -2,8 +2,8 @@
 var registerComponent = require('../core/component').registerComponent;
 
 /**
- * A component providing a bit of facility to use avatars from
- * https://readyplayer.me/.
+ * A component providing a bit of facility to VR halfbody avatars from
+ * https://readyplayer.me/
  *
  * Features:
 
@@ -12,13 +12,19 @@ var registerComponent = require('../core/component').registerComponent;
  *   of the body. This works by specifying sub-templates to the entity
  *   named after the nodes we want to expand.
  * - allow to hide certain parts of the model, so that e.g. one can
- *   use only the head and no hands.
+ *   use only the head and no hands. This works only on those
+ *   ReadyPlayerMe models that use separate meshes for different parts
+ *   of the body. Later model seem to use one single mesh, but it is
+ *   possible to generate one that has no hands, when these are not
+ *   needed.
  *
  * Model is automatically rotated 180° (default would face the user)
  * and offset 65cm, so that head is at 0 level with respect to its
  * containing entity.
  *
  * Inspired by the "inflation" approach used in Mozilla Hubs
+ *
+ * See https://docs.readyplayer.me/ready-player-me/avatars/avatar-creator/vr-avatar for a description of the avatar's structure.
  *
  */
 module.exports.Component = registerComponent('readyplayerme-avatar', {
