@@ -64,7 +64,15 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
       return;
     }
 
-    const el = nodeTemplate ? nodeTemplate.content.firstElementChild.cloneNode(true) : document.createElement('a-entity');
+    // If the user supplied a custom template for this node we will
+    // use it, otherwise we default to an a-entity.
+    var el;
+    if (nodeTemplate && nodeTemplate.content.firstElementChild) {
+      el = nodeTemplate.content.firstElementChild.cloneNode(true);
+    } else {
+      el = document.createElement('a-entity');
+    }
+    el.setAttribute('name', node.name);
 
     if (node.name === 'Scene') {
       // Compensate that the model is turned the other way around and
