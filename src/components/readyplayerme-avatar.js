@@ -140,7 +140,7 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
   },
 
   _stopIdle: function () {
-    this.idle = false;
+    this.isIdle = false;
     this.idleMixer.stopAllAction();
   },
 
