@@ -62,8 +62,7 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
 
     // inflate subtrees first so that we can determine whether or not this node needs to be inflated
     const childrenEntities = [];
-    const children = node.children.slice(0); // setObject3D mutates the node's parent, so we have to copy
-    for (const child of children) {
+    for (const child of node.children) {
       const childEntity = this._inflate(child);
       if (childEntity) {
         childrenEntities.push(childEntity);
@@ -84,7 +83,6 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     } else {
       el = document.createElement('a-entity');
     }
-    el.setAttribute('name', node.name);
 
     if (node.name === 'Scene') {
       // Compensate that the model is turned the other way around and
@@ -172,7 +170,7 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     this.remove();
 
     this.el.addEventListener('model-loaded', function (e) {
-      const mesh = this.getObject3D('mesh');
+      const mesh = e.detail.model;
 
       // When the model comes with animations, get the idle_eyes_2 one
       // (the 5th one) and set it up so that whenever the model is
