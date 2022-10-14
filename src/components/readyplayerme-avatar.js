@@ -62,7 +62,10 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
 
     // inflate subtrees first so that we can determine whether or not this node needs to be inflated
     const childrenEntities = [];
-    for (const child of node.children) {
+    // setObject3D mutates the node's parent, so we have to use a copy
+    // of the children as they are now (children is a live
+    // collection).
+    for (const child of node.children.slice(0)) {
       const childEntity = this._inflate(child);
       if (childEntity) {
         childrenEntities.push(childEntity);
