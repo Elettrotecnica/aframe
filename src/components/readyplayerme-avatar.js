@@ -6,7 +6,6 @@ var registerComponent = require('../core/component').registerComponent;
  * https://readyplayer.me/
  *
  * Features:
-
  * - generate separate entities from each node in the model tree, so
  *   that e.g. hands can be moved or rotated separately from the rest
  *   of the body. This works by specifying sub-templates to the entity
@@ -19,6 +18,9 @@ var registerComponent = require('../core/component').registerComponent;
  *   needed.
  * - idle eyes animation triggers after a configurable number of
  *   seconds of inactivity.
+ * - model will look either at a specific entity, or to entities that
+ *   are making noise (via the downstream mediastream-listener
+ *   component)
  *
  * Model is automatically rotated 180° (default would face the user)
  * and offset 65cm, so that head is at 0 level with respect to its
@@ -35,14 +37,14 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     hands: {type: 'boolean', default: true},
     shirt: {type: 'boolean', default: true},
     head: {type: 'boolean', default: true},
-    idleTimeout: {type: 'int', default: 10}
+    idleTimeout: {type: 'int', default: 10},
+    lookAt: {type: 'selector'},
+    listen: {type: 'boolean', default: true}
   },
 
   init: function () {
     this.model = null;
     this.animations = null;
-    this.idleTimeout = this.data.idleTimeout * 1000;
-    this.idle = this.idleTimeout;
     this.isIdle = false;
   },
 
@@ -58,6 +60,10 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
         default:
           node.visible = this.data.head;
       }
+    } else if (node.name === 'RightEye') {
+      this.rightEye = node;
+    } else if (node.name === 'LeftEye') {
+      this.leftEye = node;
     }
 
     // inflate subtrees first so that we can determine whether or not this node needs to be inflated
@@ -119,7 +125,6 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     node.matrix.decompose(node.position, node.rotation, node.scale);
 
     el.setObject3D(node.type.toLowerCase(), node);
-    // el.setObject3D('mesh', node);
 
     // Set the name of the `THREE.Group` to match the name of the node,
     // so that templates can be attached to the correct AFrame entity.
@@ -135,9 +140,58 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     return el;
   },
 
+  _look: function () {
+    if (this.isIdle || !this.leftEye || !this.rightEye) {
+      return;
+    }
+
+    let lookAt;
+    if (this.listen) {
+      let listener = this.el.components['mediastream-listener'];
+      if (listener) {
+        lookAt = listener.listen();
+      }
+    }
+
+    if (lookAt) {
+      this.lookAt = lookAt;
+    } else {
+      lookAt = this.lookAt;
+    }
+
+    // For every eye, see if we have something to look at, or just
+    // look forward.
+    for (let eye of [this.leftEye, this.rightEye]) {
+      let x = 0;
+      let y = 0;
+      let z = 0;
+      if (lookAt) {
+        eye.lookAt(lookAt.object3D.position);
+        x = eye.rotation.x;
+        y = eye.rotation.y;
+        z = eye.rotation.z;
+
+        // To avoid the eyes going backwards, we constrain the
+        // rotation to 1/4 of PI.
+        if (Math.abs(x / Math.PI) > 1 / 4) {
+          x = Math.PI / 4 * (x < 0 ? -1 : 1);
+        }
+        if (Math.abs(z / Math.PI) > 1 / 4) {
+          z = Math.PI / 4 * (z < 0 ? -1 : 1);
+        }
+      }
+      eye.rotation.set(x, y, z);
+      // We compensate an offset PI/2 rotation on the X axis in the
+      // eye model.
+      eye.rotateX(Math.PI / 2);
+    }
+  },
+
   _startIdle: function () {
+    // Forget what we were looking at as we become idle.
+    this.lookAt = this.defaultLookAt;
     this.isIdle = true;
-    this.idleAnimation.start();
+    this.idleAnimation.play();
   },
 
   _stopIdle: function () {
@@ -150,6 +204,8 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
       // Model is not initialized yet.
       return;
     }
+
+    this._look();
 
     this.idle -= delta;
     if (this.idle <= 0 && !this.isIdle) {
@@ -166,8 +222,22 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
   update: function () {
     var self = this;
     var el = this.el;
-    var src = this.data.model;
 
+    if (this.data.lookAt) {
+      this.lookAt = this.data.lookAt;
+      this.defaultLookAt = this.lookAt;
+    }
+
+    if (this.data.listen !== undefined) {
+      this.listen = this.data.listen;
+    }
+
+    if (this.data.idleTimeout) {
+      this.idleTimeout = this.data.idleTimeout * 1000;
+      this.idle = this.idleTimeout;
+    }
+
+    var src = this.data.model;
     if (!src) { return; }
 
     this.remove();
