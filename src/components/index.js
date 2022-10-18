@@ -57,6 +57,7 @@ require('./absolute-position-listener');
 require('./absolute-rotation-listener');
 require('./copy-material');
 require('./mediastream-sound');
+require('./mediastream-listener');
 require('./readyplayerme-avatar');
 require('./remote-hand-controls');
 require('./teleport-controls');
