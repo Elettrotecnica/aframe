@@ -21,7 +21,9 @@ module.exports.Component = registerComponent('mediastream-listener', {
       self.loudItems[e.detail.el] = e.detail;
     });
     this.el.sceneEl.addEventListener('mediastream-listener-silent', function (e) {
-      self.loudItems[e.detail.el]?.delete;
+      if (self.loudItems[e.detail.el]) {
+        self.loudItems[e.detail.el].delete;
+      }
     });
   },
 

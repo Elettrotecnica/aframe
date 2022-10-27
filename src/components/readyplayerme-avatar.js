@@ -164,16 +164,16 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     }
 
     if (lookAt) {
-       for (let eye of [this.leftEye, this.rightEye]) {
-         // Look at the object, but constrain the eyes rotation to 0.8
-         // radians. When the angle is bigger, just look forward.
-         eye.lookAt(lookAt.object3D.position);
-         if (eye.quaternion.angleTo(this.identityQuaternion) > 0.8) {
-           eye.quaternion.copy(this.identityQuaternion);
-         }
-         // Compensate a PI/2 offset in the X rotation.
-         eye.rotateX(Math.PI / 2);
-       }
+      for (let eye of [this.leftEye, this.rightEye]) {
+        // Look at the object, but constrain the eyes rotation to 0.8
+        // radians. When the angle is bigger, just look forward.
+        eye.lookAt(lookAt.object3D.position);
+        if (eye.quaternion.angleTo(this.identityQuaternion) > 0.8) {
+          eye.quaternion.copy(this.identityQuaternion);
+        }
+        // Compensate a PI/2 offset in the X rotation.
+        eye.rotateX(Math.PI / 2);
+      }
     }
   },
 
