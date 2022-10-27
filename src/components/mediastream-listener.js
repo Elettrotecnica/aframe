@@ -21,7 +21,7 @@ module.exports.Component = registerComponent('mediastream-listener', {
       self.loudItems[e.detail.el] = e.detail;
     });
     this.el.sceneEl.addEventListener('mediastream-listener-silent', function (e) {
-      self.loudItems[e.detail.el].delete;
+      self.loudItems[e.detail.el]?.delete;
     });
   },
 
@@ -61,7 +61,7 @@ module.exports.Component = registerComponent('mediastream-listener', {
       // We use an inverse quadratic attenuation based on the
       // distance.
       let noise = loudness / distance ** 2;
-      if (noise > maxNoise) {
+      if (noise > 0 && noise > maxNoise) {
         maxNoise = noise;
         maxItem = e;
       }
