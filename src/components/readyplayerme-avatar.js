@@ -46,6 +46,10 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
     this.model = null;
     this.animations = null;
     this.isIdle = false;
+    // The identity quaternion is used to calculate the rotation angle
+    // of our eyes when we are looking at objects.
+    this.identityQuaternion = new THREE.Quaternion();
+    this.identityQuaternion.identity();
   },
 
   _inflate: function (node) {
@@ -159,31 +163,17 @@ module.exports.Component = registerComponent('readyplayerme-avatar', {
       lookAt = this.lookAt;
     }
 
-    // For every eye, see if we have something to look at, or just
-    // look forward.
-    for (let eye of [this.leftEye, this.rightEye]) {
-      let x = 0;
-      let y = 0;
-      let z = 0;
-      if (lookAt) {
-        eye.lookAt(lookAt.object3D.position);
-        x = eye.rotation.x;
-        y = eye.rotation.y;
-        z = eye.rotation.z;
-
-        // To avoid the eyes going backwards, we constrain the
-        // rotation to 1/4 of PI.
-        if (Math.abs(x / Math.PI) > 1 / 4) {
-          x = Math.PI / 4 * (x < 0 ? -1 : 1);
-        }
-        if (Math.abs(z / Math.PI) > 1 / 4) {
-          z = Math.PI / 4 * (z < 0 ? -1 : 1);
-        }
-      }
-      eye.rotation.set(x, y, z);
-      // We compensate an offset PI/2 rotation on the X axis in the
-      // eye model.
-      eye.rotateX(Math.PI / 2);
+    if (lookAt) {
+       for (let eye of [this.leftEye, this.rightEye]) {
+         // Look at the object, but constrain the eyes rotation to 0.8
+         // radians. When the angle is bigger, just look forward.
+         eye.lookAt(lookAt.object3D.position);
+         if (eye.quaternion.angleTo(this.identityQuaternion) > 0.8) {
+           eye.quaternion.copy(this.identityQuaternion);
+         }
+         // Compensate a PI/2 offset in the X rotation.
+         eye.rotateX(Math.PI / 2);
+       }
     }
   },
 
