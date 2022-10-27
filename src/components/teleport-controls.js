@@ -532,6 +532,6 @@ module.exports.Component = registerComponent('teleport-controls', {
 
   isValidNormalsAngle: function (collisionNormal) {
     var angleNormals = this.referenceNormal.angleTo(collisionNormal);
-    return (THREE.Math.RAD2DEG * angleNormals <= this.data.landingMaxAngle);
+    return (THREE.MathUtils.RAD2DEG * angleNormals <= this.data.landingMaxAngle);
   }
 });
