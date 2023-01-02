@@ -136,7 +136,15 @@ suite('a-scene (without renderer)', function () {
       var sceneEl = this.el;
 
       // Stub canvas.
-      sceneEl.canvas = document.createElement('canvas');
+      sceneEl.canvas = {
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        requestFullscreen: function () {},
+        classList: {
+          add: function () {},
+          remove: function () {}
+        }
+      };
 
       // Stub renderer.
       sceneEl.renderer = {
@@ -159,13 +167,6 @@ suite('a-scene (without renderer)', function () {
         el: {object3D: {}},
         updateProjectionMatrix: function () {}
       };
-
-      // mock canvas
-      sceneEl.canvas = {
-        addEventListener: function () {},
-        removeEventListener: function () {},
-        requestFullscreen: function () {}
-      };
     });
 
     test('does not try to enter VR if already in VR', function (done) {
@@ -181,6 +182,7 @@ suite('a-scene (without renderer)', function () {
     test('calls requestPresent if headset connected', function (done) {
       var sceneEl = this.el;
       this.sinon.stub(sceneEl, 'checkHeadsetConnected').returns(true);
+      window.hasNativeWebVRImplementation = false;
       sceneEl.enterVR().then(function () {
         assert.ok(sceneEl.renderer.xr.enabled);
         done();
@@ -202,6 +204,7 @@ suite('a-scene (without renderer)', function () {
     test('does not call requestPresent if flat desktop', function (done) {
       var sceneEl = this.el;
       this.sinon.stub(sceneEl, 'checkHeadsetConnected').returns(false);
+      window.hasNativeWebVRImplementation = false;
       sceneEl.enterVR().then(function () {
         assert.notOk(sceneEl.renderer.xr.enabled);
         done();
@@ -247,6 +250,7 @@ suite('a-scene (without renderer)', function () {
       }
 
       this.sinon.stub(sceneEl, 'checkHeadsetConnected').returns(false);
+      window.hasNativeWebVRImplementation = false;
       sceneEl.enterVR().then(function () {
         assert.ok(fullscreenSpy.called);
         done();

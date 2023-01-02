@@ -16103,40 +16103,9 @@ var bind = __webpack_require__(/*! ../utils/bind */ "./src/utils/bind.js");
 var trackedControlsUtils = __webpack_require__(/*! ../utils/tracked-controls */ "./src/utils/tracked-controls.js");
 
 var checkControllerPresentAndSetup = trackedControlsUtils.checkControllerPresentAndSetup;
-var LEFT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v3/left.glb';
-var RIGHT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v3/right.glb';
-var BONE_PREFIX = {
-  left: 'b_l_',
-  right: 'b_r_'
-};
+var LEFT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v4/left.glb';
+var RIGHT_HAND_MODEL_URL = 'https://cdn.aframe.io/controllers/oculus-hands/v4/right.glb';
 var JOINTS = ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip', 'index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip', 'middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip', 'ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip', 'pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'];
-var BONE_MAPPING = {
-  'wrist': 'wrist',
-  'thumb-metacarpal': 'thumb1',
-  'thumb-phalanx-proximal': 'thumb2',
-  'thumb-phalanx-distal': 'thumb3',
-  'thumb-tip': 'thumb_null',
-  'index-finger-metacarpal': 'index0',
-  'index-finger-phalanx-proximal': 'index1',
-  'index-finger-phalanx-intermediate': 'index2',
-  'index-finger-phalanx-distal': 'index3',
-  'index-finger-tip': 'index_null',
-  'middle-finger-metacarpal': 'middle0',
-  'middle-finger-phalanx-proximal': 'middle1',
-  'middle-finger-phalanx-intermediate': 'middle2',
-  'middle-finger-phalanx-distal': 'middle3',
-  'middle-finger-tip': 'middle_null',
-  'ring-finger-metacarpal': 'ring0',
-  'ring-finger-phalanx-proximal': 'ring1',
-  'ring-finger-phalanx-intermediate': 'ring2',
-  'ring-finger-phalanx-distal': 'ring3',
-  'ring-finger-tip': 'ring_null',
-  'pinky-finger-metacarpal': 'pinky0',
-  'pinky-finger-phalanx-proximal': 'pinky1',
-  'pinky-finger-phalanx-intermediate': 'pinky2',
-  'pinky-finger-phalanx-distal': 'pinky3',
-  'pinky-finger-tip': 'pinky_null'
-};
 var PINCH_START_DISTANCE = 0.015;
 var PINCH_END_DISTANCE = 0.03;
 var PINCH_POSITION_INTERPOLATION = 0.5;
@@ -16288,18 +16257,13 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
       var jointPose;
       var jointTransform;
       jointPose = frame.getJointPose(inputjoint, referenceSpace);
-
-      if (!BONE_MAPPING[inputjoint.jointName]) {
-        continue;
-      }
-
-      bone = this.getBone(BONE_PREFIX[this.data.hand] + BONE_MAPPING[inputjoint.jointName]);
+      bone = this.getBone(inputjoint.jointName);
 
       if (bone != null && jointPose) {
         jointTransform = jointPose.transform;
         this.mesh.visible = true;
-        bone.position.copy(jointTransform.position).multiplyScalar(100);
-        bone.quaternion.set(jointTransform.orientation.x, jointTransform.orientation.y, jointTransform.orientation.z, jointTransform.orientation.w);
+        bone.position.copy(jointTransform.position);
+        bone.quaternion.copy(jointTransform.orientation);
       }
     }
   },
@@ -16456,7 +16420,7 @@ module.exports.Component = registerComponent('hand-tracking-controls', {
   },
   onModelLoaded: function () {
     var mesh = this.mesh = this.el.getObject3D('mesh').children[0];
-    var skinnedMesh = this.skinnedMesh = mesh.children[30];
+    var skinnedMesh = this.skinnedMesh = mesh.getObjectByProperty('type', 'SkinnedMesh');
 
     if (!this.skinnedMesh) {
       return;
@@ -16889,7 +16853,9 @@ registerComponent('laser-controls', {
     el.setAttribute('vive-controls', controlsConfiguration);
     el.setAttribute('vive-focus-controls', controlsConfiguration);
     el.setAttribute('windows-motion-controls', controlsConfiguration);
-    el.setAttribute('generic-tracked-controller-controls', controlsConfiguration); // Wait for controller to connect, or have a valid pointing pose, before creating ray
+    el.setAttribute('generic-tracked-controller-controls', {
+      hand: controlsConfiguration.hand
+    }); // Wait for controller to connect, or have a valid pointing pose, before creating ray
 
     el.addEventListener('controllerconnected', createRay);
     el.addEventListener('controllerdisconnected', hideRay);
@@ -20351,35 +20317,35 @@ var CONTROLLER_PROPERTIES = {
       modelUrl: TOUCH_CONTROLLER_MODEL_BASE_URL + 'gen2-left.gltf',
       rayOrigin: {
         origin: {
-          x: -0.01,
-          y: 0,
-          z: -0.02
+          x: -0.006,
+          y: -0.03,
+          z: -0.04
         },
         direction: {
           x: 0,
-          y: -0.5,
+          y: -0.9,
           z: -1
         }
       },
-      modelPivotOffset: new THREE.Vector3(0, 0, 0),
-      modelPivotRotation: new THREE.Euler(0, 0, 0)
+      modelPivotOffset: new THREE.Vector3(0, -0.007, -0.021),
+      modelPivotRotation: new THREE.Euler(-Math.PI / 4, 0, 0)
     },
     right: {
       modelUrl: TOUCH_CONTROLLER_MODEL_BASE_URL + 'gen2-right.gltf',
       rayOrigin: {
         origin: {
-          x: 0.01,
-          y: 0,
-          z: -0.02
+          x: 0.006,
+          y: -0.03,
+          z: -0.04
         },
         direction: {
           x: 0,
-          y: -0.5,
+          y: -0.9,
           z: -1
         }
       },
-      modelPivotOffset: new THREE.Vector3(0, 0, 0),
-      modelPivotRotation: new THREE.Euler(0, 0, 0)
+      modelPivotOffset: new THREE.Vector3(0, -0.007, -0.021),
+      modelPivotRotation: new THREE.Euler(-Math.PI / 4, 0, 0)
     }
   },
   'oculus-touch-v3': {
@@ -20648,17 +20614,18 @@ module.exports.Component = registerComponent('oculus-touch-controls', {
     this.checkIfControllerPresent();
   },
   onButtonChanged: function (evt) {
-    // move the button meshes
+    var button = this.mapping[this.data.hand].buttons[evt.detail.id];
+
+    if (!button) {
+      return;
+    } // move the button meshes
+
+
     if (this.isOculusTouchV3) {
       this.onButtonChangedV3(evt);
     } else {
-      var button = this.mapping[this.data.hand].buttons[evt.detail.id];
       var buttonMeshes = this.buttonMeshes;
       var analogValue;
-
-      if (!button) {
-        return;
-      }
 
       if (button === 'trigger' || button === 'grip') {
         analogValue = evt.detail.state.value;
@@ -20684,11 +20651,6 @@ module.exports.Component = registerComponent('oculus-touch-controls', {
     var button = this.mapping[this.data.hand].buttons[evt.detail.id];
     var buttonObjects = this.buttonObjects;
     var analogValue;
-
-    if (!button) {
-      return;
-    }
-
     analogValue = evt.detail.state.value;
     analogValue *= this.data.hand === 'left' ? -1 : 1;
 
@@ -21321,14 +21283,26 @@ module.exports.Component = registerComponent('raycaster', {
   flattenObject3DMaps: function (els) {
     var key;
     var i;
-    var objects = this.objects; // Push meshes and other attachments onto list of objects to intersect.
+    var objects = this.objects;
+    var scene = this.el.sceneEl.object3D;
+
+    function isAttachedToScene(object) {
+      if (object.parent) {
+        return isAttachedToScene(object.parent);
+      } else {
+        return object === scene;
+      }
+    } // Push meshes and other attachments onto list of objects to intersect.
+
 
     objects.length = 0;
 
     for (i = 0; i < els.length; i++) {
-      if (els[i].isEntity && els[i].object3D) {
-        for (key in els[i].object3DMap) {
-          objects.push(els[i].getObject3D(key));
+      var el = els[i];
+
+      if (el.isEntity && el.object3D && isAttachedToScene(el.object3D)) {
+        for (key in el.object3DMap) {
+          objects.push(el.getObject3D(key));
         }
       }
     }
@@ -23102,6 +23076,15 @@ module.exports.Component = registerComponent('pool', {
     el.pause();
     this.container.appendChild(el);
     this.availableEls.push(el);
+    var usedEls = this.usedEls;
+    el.addEventListener('loaded', function () {
+      if (usedEls.indexOf(el) !== -1) {
+        return;
+      }
+
+      el.object3DParent = el.object3D.parent;
+      el.object3D.parent.remove(el.object3D);
+    });
   },
 
   /**
@@ -23138,6 +23121,12 @@ module.exports.Component = registerComponent('pool', {
 
     el = this.availableEls.shift();
     this.usedEls.push(el);
+
+    if (el.object3DParent) {
+      el.object3DParent.add(el.object3D);
+      this.updateRaycasters();
+    }
+
     el.object3D.visible = true;
     return el;
   },
@@ -23155,10 +23144,21 @@ module.exports.Component = registerComponent('pool', {
 
     this.usedEls.splice(index, 1);
     this.availableEls.push(el);
+    el.object3DParent = el.object3D.parent;
+    el.object3D.parent.remove(el.object3D);
+    this.updateRaycasters();
     el.object3D.visible = false;
     el.pause();
     return el;
+  },
+
+  updateRaycasters() {
+    var raycasterEls = document.querySelectorAll('[raycaster]');
+    raycasterEls.forEach(function (el) {
+      el.components['raycaster'].setDirty();
+    });
   }
+
 });
 
 /***/ }),
@@ -23396,7 +23396,7 @@ module.exports.Component = registerComponent('screenshot', {
   },
   getRenderTarget: function (width, height) {
     return new THREE.WebGLRenderTarget(width, height, {
-      encoding: THREE.sRGBEncoding,
+      encoding: this.el.sceneEl.renderer.outputEncoding,
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -23722,6 +23722,9 @@ module.exports.Component = registerComponent('vr-mode-ui', {
     enabled: {
       default: true
     },
+    cardboardModeEnabled: {
+      default: false
+    },
     enterVRButton: {
       default: ''
     },
@@ -23840,9 +23843,13 @@ module.exports.Component = registerComponent('vr-mode-ui', {
       return;
     }
 
-    if (sceneEl.is('vr-mode')) {
+    if (sceneEl.is('vr-mode') || (sceneEl.isMobile || utils.device.isMobileDeviceRequestingDesktopSite()) && !this.data.cardboardModeEnabled && !utils.device.checkVRSupport()) {
       this.enterVREl.classList.add(HIDDEN_CLASS);
     } else {
+      if (!utils.device.checkVRSupport()) {
+        this.enterVREl.classList.add('fullscreen');
+      }
+
       this.enterVREl.classList.remove(HIDDEN_CLASS);
     }
   },
@@ -23894,7 +23901,7 @@ function createEnterVRButton(onClick) {
   wrapper.setAttribute(constants.AFRAME_INJECTED, '');
   vrButton = document.createElement('button');
   vrButton.className = ENTER_VR_BTN_CLASS;
-  vrButton.setAttribute('title', 'Enter VR mode with a headset or fullscreen mode on a desktop. ' + 'Visit https://webvr.rocks or https://webvr.info for more information.');
+  vrButton.setAttribute('title', 'Enter VR mode with a headset or fullscreen without');
   vrButton.setAttribute(constants.AFRAME_INJECTED, '');
 
   if (utils.device.isMobile()) {
@@ -23928,7 +23935,7 @@ function createEnterARButton(onClick) {
   wrapper.setAttribute(constants.AFRAME_INJECTED, '');
   arButton = document.createElement('button');
   arButton.className = ENTER_AR_BTN_CLASS;
-  arButton.setAttribute('title', 'Enter AR mode with a headset or handheld device. ' + 'Visit https://webvr.rocks or https://webvr.info for more information.');
+  arButton.setAttribute('title', 'Enter AR mode with a headset or handheld device.');
   arButton.setAttribute(constants.AFRAME_INJECTED, '');
 
   if (utils.device.isMobile()) {
@@ -29551,15 +29558,23 @@ module.exports = registerElement('a-mixin', {
   \****************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-/* global CustomEvent */
-var registerElement = (__webpack_require__(/*! ./a-register-element */ "./src/core/a-register-element.js").registerElement);
-
-var isNode = (__webpack_require__(/*! ./a-register-element */ "./src/core/a-register-element.js").isNode);
-
+/* global customElements, CustomEvent, HTMLElement, MutationObserver */
 var utils = __webpack_require__(/*! ../utils/ */ "./src/utils/index.js");
 
 var warn = utils.debug('core:a-node:warn');
-var error = utils.debug('core:a-node:error');
+var knownTags = {
+  'a-scene': true,
+  'a-assets': true,
+  'a-assets-items': true,
+  'a-cubemap': true,
+  'a-mixin': true,
+  'a-node': true,
+  'a-entity': true
+};
+
+function isNode(node) {
+  return node.tagName.toLowerCase() in knownTags || node.isNode;
+}
 /**
  * Base class for A-Frame that manages loading of objects.
  *
@@ -29567,285 +29582,321 @@ var error = utils.debug('core:a-node:error');
  * Nodes emit a `loaded` event when they and their children have initialized.
  */
 
-module.exports = registerElement('a-node', {
-  prototype: Object.create(window.HTMLElement.prototype, {
-    createdCallback: {
-      value: function () {
-        this.computedMixinStr = '';
-        this.hasLoaded = false;
-        this.isNode = true;
-        this.mixinEls = [];
-      },
-      writable: window.debug
-    },
-    attachedCallback: {
-      value: function () {
-        var mixins;
-        this.sceneEl = this.closestScene();
 
-        if (!this.sceneEl) {
-          warn('You are attempting to attach <' + this.tagName + '> outside of an A-Frame ' + 'scene. Append this element to `<a-scene>` instead.');
-        }
+class ANode extends HTMLElement {
+  constructor() {
+    super();
+    this.computedMixinStr = '';
+    this.hasLoaded = false;
+    this.isNode = true;
+    this.mixinEls = [];
+  }
 
-        this.hasLoaded = false;
-        this.emit('nodeready', undefined, false);
-
-        if (!this.isMixin) {
-          mixins = this.getAttribute('mixin');
-
-          if (mixins) {
-            this.updateMixins(mixins);
-          }
-        }
-      },
-      writable: window.debug
-    },
-
-    /**
-     * Handle mixin.
-     */
-    attributeChangedCallback: {
-      value: function (attr, oldVal, newVal) {
-        // Ignore if `<a-node>` code is just updating computed mixin in the DOM.
-        if (newVal === this.computedMixinStr) {
-          return;
-        }
-
-        if (attr === 'mixin' && !this.isMixin) {
-          this.updateMixins(newVal, oldVal);
-        }
-      }
-    },
-
-    /**
-     * Returns the first scene by traversing up the tree starting from and
-     * including receiver element.
-     */
-    closestScene: {
-      value: function closest() {
-        var element = this;
-
-        while (element) {
-          if (element.isScene) {
-            break;
-          }
-
-          element = element.parentElement;
-        }
-
-        return element;
-      }
-    },
-
-    /**
-     * Returns first element matching a selector by traversing up the tree starting
-     * from and including receiver element.
-     *
-     * @param {string} selector - Selector of element to find.
-     */
-    closest: {
-      value: function closest(selector) {
-        var matches = this.matches || this.mozMatchesSelector || this.msMatchesSelector || this.oMatchesSelector || this.webkitMatchesSelector;
-        var element = this;
-
-        while (element) {
-          if (matches.call(element, selector)) {
-            break;
-          }
-
-          element = element.parentElement;
-        }
-
-        return element;
-      }
-    },
-    detachedCallback: {
-      value: function () {
-        this.hasLoaded = false;
-      }
-    },
-
-    /**
-     * Wait for children to load, if any.
-     * Then emit `loaded` event and set `hasLoaded`.
-     */
-    load: {
-      value: function (cb, childFilter) {
-        var children;
-        var childrenLoaded;
-        var self = this;
-
-        if (this.hasLoaded) {
-          return;
-        } // Default to waiting for all nodes.
-
-
-        childFilter = childFilter || isNode; // Wait for children to load (if any), then load.
-
-        children = this.getChildren();
-        childrenLoaded = children.filter(childFilter).map(function (child) {
-          return new Promise(function waitForLoaded(resolve) {
-            if (child.hasLoaded) {
-              return resolve();
-            }
-
-            child.addEventListener('loaded', resolve);
-          });
-        });
-        Promise.all(childrenLoaded).then(function emitLoaded() {
-          self.hasLoaded = true;
-
-          if (cb) {
-            cb();
-          }
-
-          self.emit('loaded', undefined, false);
-        }).catch(function (err) {
-          error('Failure loading node: ', err);
-        });
-      },
-      writable: true
-    },
-    getChildren: {
-      value: function () {
-        return Array.prototype.slice.call(this.children, 0);
-      }
-    },
-
-    /**
-     * Unregister old mixins and listeners.
-     * Register new mixins and listeners.
-     * Registering means to update `this.mixinEls` with listeners.
-     */
-    updateMixins: {
-      value: function () {
-        var newMixinIdArray = [];
-        var oldMixinIdArray = [];
-        var mixinIds = {};
-        return function (newMixins, oldMixins) {
-          var i;
-          var newMixinIds;
-          var oldMixinIds;
-          newMixinIdArray.length = 0;
-          oldMixinIdArray.length = 0;
-          newMixinIds = newMixins ? utils.split(newMixins.trim(), /\s+/) : newMixinIdArray;
-          oldMixinIds = oldMixins ? utils.split(oldMixins.trim(), /\s+/) : oldMixinIdArray;
-          mixinIds.newMixinIds = newMixinIds;
-          mixinIds.oldMixinIds = oldMixinIds; // Unregister old mixins.
-
-          for (i = 0; i < oldMixinIds.length; i++) {
-            if (newMixinIds.indexOf(oldMixinIds[i]) === -1) {
-              this.unregisterMixin(oldMixinIds[i]);
-            }
-          } // Register new mixins.
-
-
-          this.computedMixinStr = '';
-          this.mixinEls.length = 0;
-
-          for (i = 0; i < newMixinIds.length; i++) {
-            this.registerMixin(document.getElementById(newMixinIds[i]));
-          } // Update DOM. Keep track of `computedMixinStr` to not recurse back here after
-          // update.
-
-
-          if (this.computedMixinStr) {
-            this.computedMixinStr = this.computedMixinStr.trim();
-            window.HTMLElement.prototype.setAttribute.call(this, 'mixin', this.computedMixinStr);
-          }
-
-          return mixinIds;
-        };
-      }()
-    },
-
-    /**
-     * From mixin ID, add mixin element to `mixinEls`.
-     *
-     * @param {Element} mixinEl
-     */
-    registerMixin: {
-      value: function (mixinEl) {
-        var compositedMixinIds;
-        var i;
-        var mixin;
-
-        if (!mixinEl) {
-          return;
-        } // Register composited mixins (if mixin has mixins).
-
-
-        mixin = mixinEl.getAttribute('mixin');
-
-        if (mixin) {
-          compositedMixinIds = utils.split(mixin.trim(), /\s+/);
-
-          for (i = 0; i < compositedMixinIds.length; i++) {
-            this.registerMixin(document.getElementById(compositedMixinIds[i]));
-          }
-        } // Register mixin.
-
-
-        this.computedMixinStr = this.computedMixinStr + ' ' + mixinEl.id;
-        this.mixinEls.push(mixinEl);
-      }
-    },
-    setAttribute: {
-      value: function (attr, newValue) {
-        if (attr === 'mixin') {
-          this.updateMixins(newValue);
-        }
-
-        window.HTMLElement.prototype.setAttribute.call(this, attr, newValue);
-      }
-    },
-    unregisterMixin: {
-      value: function (mixinId) {
-        var i;
-        var mixinEls = this.mixinEls;
-        var mixinEl;
-
-        for (i = 0; i < mixinEls.length; ++i) {
-          mixinEl = mixinEls[i];
-
-          if (mixinId === mixinEl.id) {
-            mixinEls.splice(i, 1);
-            break;
-          }
-        }
-      }
-    },
-
-    /**
-     * Emit a DOM event.
-     *
-     * @param {string} name - Name of event.
-     * @param {object} [detail={}] - Custom data to pass as `detail` to the event.
-     * @param {boolean} [bubbles=true] - Whether the event should bubble.
-     * @param {object} [extraData] - Extra data to pass to the event, if any.
-     */
-    emit: {
-      value: function () {
-        var data = {};
-        return function (name, detail, bubbles, extraData) {
-          if (bubbles === undefined) {
-            bubbles = true;
-          }
-
-          data.bubbles = !!bubbles;
-          data.detail = detail; // If extra data is present, we need to create a new object.
-
-          if (extraData) {
-            data = utils.extend({}, extraData, data);
-          }
-
-          this.dispatchEvent(new CustomEvent(name, data));
-        };
-      }(),
-      writable: window.debug
+  connectedCallback() {
+    // Defer if DOM is not ready.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', this.connectedCallback.bind(this));
+      return;
     }
-  })
-});
+
+    ANode.prototype.doConnectedCallback.call(this);
+  }
+
+  doConnectedCallback() {
+    var mixins;
+    this.sceneEl = this.closestScene();
+
+    if (!this.sceneEl) {
+      warn('You are attempting to attach <' + this.tagName + '> outside of an A-Frame ' + 'scene. Append this element to `<a-scene>` instead.');
+    }
+
+    this.hasLoaded = false;
+    this.emit('nodeready', undefined, false);
+
+    if (!this.isMixin) {
+      mixins = this.getAttribute('mixin');
+
+      if (mixins) {
+        this.updateMixins(mixins);
+      }
+    }
+  }
+  /**
+   * Handle mixin.
+   */
+
+
+  attributeChangedCallback(attr, oldVal, newVal) {
+    // Ignore if `<a-node>` code is just updating computed mixin in the DOM.
+    if (newVal === this.computedMixinStr) {
+      return;
+    }
+
+    if (attr === 'mixin' && !this.isMixin) {
+      this.updateMixins(newVal, oldVal);
+    }
+  }
+  /**
+   * Returns the first scene by traversing up the tree starting from and
+   * including receiver element.
+   */
+
+
+  closestScene() {
+    var element = this;
+
+    while (element) {
+      if (element.isScene) {
+        break;
+      }
+
+      element = element.parentElement;
+    }
+
+    return element;
+  }
+  /**
+   * Returns first element matching a selector by traversing up the tree starting
+   * from and including receiver element.
+   *
+   * @param {string} selector - Selector of element to find.
+   */
+
+
+  closest(selector) {
+    var matches = this.matches || this.mozMatchesSelector || this.msMatchesSelector || this.oMatchesSelector || this.webkitMatchesSelector;
+    var element = this;
+
+    while (element) {
+      if (matches.call(element, selector)) {
+        break;
+      }
+
+      element = element.parentElement;
+    }
+
+    return element;
+  }
+
+  disconnectedCallback() {
+    this.hasLoaded = false;
+  }
+  /**
+   * Wait for children to load, if any.
+   * Then emit `loaded` event and set `hasLoaded`.
+   */
+
+
+  load(cb, childFilter) {
+    var children;
+    var childrenLoaded;
+    var self = this;
+
+    if (this.hasLoaded) {
+      return;
+    } // Default to waiting for all nodes.
+
+
+    childFilter = childFilter || isNode; // Wait for children to load (if any), then load.
+
+    children = this.getChildren();
+    childrenLoaded = children.filter(childFilter).map(function (child) {
+      return new Promise(function waitForLoaded(resolve, reject) {
+        if (child.hasLoaded) {
+          return resolve();
+        }
+
+        child.addEventListener('loaded', resolve);
+        child.addEventListener('error', reject);
+      });
+    });
+    Promise.allSettled(childrenLoaded).then(function emitLoaded(results) {
+      results.forEach(function checkResultForError(result) {
+        if (result.status === 'rejected') {
+          // An "error" event has already been fired by THREE.js loader,
+          // so we don't need to fire another one.
+          // A warning explaining the consequences of the error is sufficient.
+          warn('Rendering scene with errors on node: ', result.reason.target);
+        }
+      });
+      self.hasLoaded = true;
+
+      if (cb) {
+        cb();
+      }
+
+      self.setupMutationObserver();
+      self.emit('loaded', undefined, false);
+    });
+  }
+  /**
+   * With custom elements V1 attributeChangedCallback only fires
+   * for attributes defined statically via observedAttributes.
+   * One can assign any arbitrary components to an A-Frame entity
+   * hence we can't know the list of attributes beforehand.
+   * This function setup a mutation observer to keep track of the entiy attribute changes
+   * in the DOM and update components accordingly.
+   */
+
+
+  setupMutationObserver() {
+    var self = this;
+    var observerConfig = {
+      attributes: true,
+      attributeOldValue: true
+    };
+    var observer = new MutationObserver(function callAttributeChangedCallback(mutationList) {
+      var i;
+
+      for (i = 0; i < mutationList.length; i++) {
+        if (mutationList[i].type === 'attributes') {
+          var attributeName = mutationList[i].attributeName;
+          var newValue = window.HTMLElement.prototype.getAttribute.call(self, attributeName);
+          var oldValue = mutationList[i].oldValue;
+          self.attributeChangedCallback(attributeName, oldValue, newValue);
+        }
+      }
+    });
+    observer.observe(this, observerConfig);
+  }
+
+  getChildren() {
+    return Array.prototype.slice.call(this.children, 0);
+  }
+  /**
+   * Unregister old mixins and listeners.
+   * Register new mixins and listeners.
+   * Registering means to update `this.mixinEls` with listeners.
+   */
+
+
+  updateMixins(newMixins, oldMixins) {
+    var newMixinIdArray = ANode.newMixinIdArray;
+    var oldMixinIdArray = ANode.oldMixinIdArray;
+    var mixinIds = ANode.mixinIds;
+    var i;
+    var newMixinIds;
+    var oldMixinIds;
+    newMixinIdArray.length = 0;
+    oldMixinIdArray.length = 0;
+    newMixinIds = newMixins ? utils.split(newMixins.trim(), /\s+/) : newMixinIdArray;
+    oldMixinIds = oldMixins ? utils.split(oldMixins.trim(), /\s+/) : oldMixinIdArray;
+    mixinIds.newMixinIds = newMixinIds;
+    mixinIds.oldMixinIds = oldMixinIds; // Unregister old mixins.
+
+    for (i = 0; i < oldMixinIds.length; i++) {
+      if (newMixinIds.indexOf(oldMixinIds[i]) === -1) {
+        this.unregisterMixin(oldMixinIds[i]);
+      }
+    } // Register new mixins.
+
+
+    this.computedMixinStr = '';
+    this.mixinEls.length = 0;
+
+    for (i = 0; i < newMixinIds.length; i++) {
+      this.registerMixin(document.getElementById(newMixinIds[i]));
+    } // Update DOM. Keep track of `computedMixinStr` to not recurse back here after
+    // update.
+
+
+    if (this.computedMixinStr) {
+      this.computedMixinStr = this.computedMixinStr.trim();
+      window.HTMLElement.prototype.setAttribute.call(this, 'mixin', this.computedMixinStr);
+    }
+
+    return mixinIds;
+  }
+  /**
+   * From mixin ID, add mixin element to `mixinEls`.
+   *
+   * @param {Element} mixinEl
+   */
+
+
+  registerMixin(mixinEl) {
+    var compositedMixinIds;
+    var i;
+    var mixin;
+
+    if (!mixinEl) {
+      return;
+    } // Register composited mixins (if mixin has mixins).
+
+
+    mixin = mixinEl.getAttribute('mixin');
+
+    if (mixin) {
+      compositedMixinIds = utils.split(mixin.trim(), /\s+/);
+
+      for (i = 0; i < compositedMixinIds.length; i++) {
+        this.registerMixin(document.getElementById(compositedMixinIds[i]));
+      }
+    } // Register mixin.
+
+
+    this.computedMixinStr = this.computedMixinStr + ' ' + mixinEl.id;
+    this.mixinEls.push(mixinEl);
+  }
+
+  setAttribute(attr, newValue) {
+    if (attr === 'mixin') {
+      this.updateMixins(newValue);
+    }
+
+    window.HTMLElement.prototype.setAttribute.call(this, attr, newValue);
+  }
+
+  unregisterMixin(mixinId) {
+    var i;
+    var mixinEls = this.mixinEls;
+    var mixinEl;
+
+    for (i = 0; i < mixinEls.length; ++i) {
+      mixinEl = mixinEls[i];
+
+      if (mixinId === mixinEl.id) {
+        mixinEls.splice(i, 1);
+        break;
+      }
+    }
+  }
+  /**
+   * Emit a DOM event.
+   *
+   * @param {string} name - Name of event.
+   * @param {object} [detail={}] - Custom data to pass as `detail` to the event.
+   * @param {boolean} [bubbles=true] - Whether the event should bubble.
+   * @param {object} [extraData] - Extra data to pass to the event, if any.
+   */
+
+
+  emit(name, detail, bubbles, extraData) {
+    var data = ANode.evtData;
+
+    if (bubbles === undefined) {
+      bubbles = true;
+    }
+
+    data.bubbles = !!bubbles;
+    data.detail = detail; // If extra data is present, we need to create a new object.
+
+    if (extraData) {
+      data = utils.extend({}, extraData, data);
+    }
+
+    this.dispatchEvent(new CustomEvent(name, data));
+  }
+
+}
+
+ANode.evtData = {};
+ANode.newMixinIdArray = [];
+ANode.oldMixinIdArray = [];
+ANode.mixinIds = {};
+customElements.define('a-node', ANode);
+module.exports.ANode = ANode;
+module.exports.knownTags = knownTags;
 
 /***/ }),
 
@@ -30127,9 +30178,12 @@ var Component = module.exports.Component = function (el, attrValue, id) {
     this.previousOldData = undefined;
     this.parsingAttrValue = undefined;
   } // Last value passed to updateProperties.
+  // This type of throttle ensures that when a burst of changes occurs, the final change to the
+  // component always triggers an event (so a consumer of this event will end up reading the correct
+  // final state, following a burst of changes).
 
 
-  this.throttledEmitComponentChanged = utils.throttleComponentChanged(function emitChange() {
+  this.throttledEmitComponentChanged = utils.throttleLeadingAndTrailing(function emitChange() {
     el.emit('componentchanged', self.evtDetail, false);
   }, 200);
   this.updateProperties(attrValue);
@@ -31383,8 +31437,6 @@ var initWakelock = __webpack_require__(/*! ./wakelock */ "./src/core/scene/wakel
 
 var loadingScreen = __webpack_require__(/*! ./loadingScreen */ "./src/core/scene/loadingScreen.js");
 
-var re = __webpack_require__(/*! ../a-register-element */ "./src/core/a-register-element.js");
-
 var scenes = __webpack_require__(/*! ./scenes */ "./src/core/scene/scenes.js");
 
 var systems = (__webpack_require__(/*! ../system */ "./src/core/system.js").systems);
@@ -31394,9 +31446,9 @@ var THREE = __webpack_require__(/*! ../../lib/three */ "./src/lib/three.js");
 var utils = __webpack_require__(/*! ../../utils/ */ "./src/utils/index.js"); // Require after.
 
 
-var AEntity = __webpack_require__(/*! ../a-entity */ "./src/core/a-entity.js");
+var AEntity = (__webpack_require__(/*! ../a-entity */ "./src/core/a-entity.js").AEntity);
 
-var ANode = __webpack_require__(/*! ../a-node */ "./src/core/a-node.js");
+var ANode = (__webpack_require__(/*! ../a-node */ "./src/core/a-node.js").ANode);
 
 var initPostMessageAPI = __webpack_require__(/*! ./postMessage */ "./src/core/scene/postMessage.js");
 
@@ -31404,7 +31456,6 @@ var bind = utils.bind;
 var isIOS = utils.device.isIOS();
 var isMobile = utils.device.isMobile();
 var isWebXRAvailable = utils.device.isWebXRAvailable;
-var registerElement = re.registerElement;
 var warn = utils.debug('core:a-scene:warn');
 
 if (isIOS) {
@@ -31427,850 +31478,826 @@ if (isIOS) {
  */
 
 
-module.exports.AScene = registerElement('a-scene', {
-  prototype: Object.create(AEntity.prototype, {
-    createdCallback: {
-      value: function () {
-        this.clock = new THREE.Clock();
-        this.isIOS = isIOS;
-        this.isMobile = isMobile;
-        this.hasWebXR = isWebXRAvailable;
-        this.isAR = false;
-        this.isScene = true;
-        this.object3D = new THREE.Scene();
-        var self = this;
+class AScene extends AEntity {
+  constructor() {
+    var self;
+    super();
+    self = this;
+    self.clock = new THREE.Clock();
+    self.isIOS = isIOS;
+    self.isMobile = isMobile;
+    self.hasWebXR = isWebXRAvailable;
+    self.isAR = false;
+    self.isScene = true;
+    self.object3D = new THREE.Scene();
 
-        this.object3D.onAfterRender = function (renderer, scene, camera) {
-          // THREE may swap the camera used for the rendering if in VR, so we pass it to tock
-          if (self.isPlaying) {
-            self.tock(self.time, self.delta, camera);
-          }
-        };
-
-        this.resize = bind(this.resize, this);
-        this.render = bind(this.render, this);
-        this.systems = {};
-        this.systemNames = [];
-        this.time = this.delta = 0;
-        this.behaviors = {
-          tick: [],
-          tock: []
-        };
-        this.hasLoaded = false;
-        this.isPlaying = false;
-        this.originalHTML = this.innerHTML; // Default components.
-
-        this.setAttribute('inspector', '');
-        this.setAttribute('keyboard-shortcuts', '');
-        this.setAttribute('screenshot', '');
-        this.setAttribute('vr-mode-ui', '');
-        this.setAttribute('device-orientation-permission-ui', '');
+    self.object3D.onAfterRender = function (renderer, scene, camera) {
+      // THREE may swap the camera used for the rendering if in VR, so we pass it to tock
+      if (self.isPlaying) {
+        self.tock(self.time, self.delta, camera);
       }
-    },
-    addFullScreenStyles: {
-      value: function () {
-        document.documentElement.classList.add('a-fullscreen');
-      }
-    },
-    removeFullScreenStyles: {
-      value: function () {
-        document.documentElement.classList.remove('a-fullscreen');
-      }
-    },
-    attachedCallback: {
-      value: function () {
-        var self = this;
-        var embedded = this.hasAttribute('embedded'); // Renderer initialization
-
-        setupCanvas(this);
-        this.setupRenderer();
-        loadingScreen.setup(this, getCanvasSize);
-        this.resize();
-
-        if (!embedded) {
-          this.addFullScreenStyles();
-        }
-
-        initPostMessageAPI(this);
-        initMetaTags(this);
-        initWakelock(this); // Handler to exit VR (e.g., Oculus Browser back button).
-
-        this.onVRPresentChangeBound = bind(this.onVRPresentChange, this);
-        window.addEventListener('vrdisplaypresentchange', this.onVRPresentChangeBound); // Bind functions.
-
-        this.enterVRBound = function () {
-          self.enterVR();
-        };
-
-        this.exitVRBound = function () {
-          self.exitVR();
-        };
-
-        this.exitVRTrueBound = function () {
-          self.exitVR(true);
-        };
-
-        this.pointerRestrictedBound = function () {
-          self.pointerRestricted();
-        };
-
-        this.pointerUnrestrictedBound = function () {
-          self.pointerUnrestricted();
-        };
-
-        if (!isWebXRAvailable) {
-          // Exit VR on `vrdisplaydeactivate` (e.g. taking off Rift headset).
-          window.addEventListener('vrdisplaydeactivate', this.exitVRBound); // Exit VR on `vrdisplaydisconnect` (e.g. unplugging Rift headset).
-
-          window.addEventListener('vrdisplaydisconnect', this.exitVRTrueBound); // Register for mouse restricted events while in VR
-          // (e.g. mouse no longer available on desktop 2D view)
-
-          window.addEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound); // Register for mouse unrestricted events while in VR
-          // (e.g. mouse once again available on desktop 2D view)
-
-          window.addEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
-        }
-
-        window.addEventListener('sessionend', this.resize); // Camera set up by camera system.
-
-        this.addEventListener('cameraready', function () {
-          self.attachedCallbackPostCamera();
-        });
-        this.initSystems(); // WebXR Immersive navigation handler.
-
-        if (this.hasWebXR && navigator.xr && navigator.xr.addEventListener) {
-          navigator.xr.addEventListener('sessiongranted', function () {
-            self.enterVR();
-          });
-        }
-      }
-    },
-    attachedCallbackPostCamera: {
-      value: function () {
-        var resize;
-        var self = this;
-        window.addEventListener('load', resize);
-        window.addEventListener('resize', function () {
-          // Workaround for a Webkit bug (https://bugs.webkit.org/show_bug.cgi?id=170595)
-          // where the window does not contain the correct viewport size
-          // after an orientation change. The window size is correct if the operation
-          // is postponed a few milliseconds.
-          // self.resize can be called directly once the bug above is fixed.
-          if (self.isIOS) {
-            setTimeout(self.resize, 100);
-          } else {
-            self.resize();
-          }
-        });
-        this.play(); // Add to scene index.
-
-        scenes.push(this);
-      },
-      writable: window.debug
-    },
-
-    /**
-     * Initialize all systems.
-     */
-    initSystems: {
-      value: function () {
-        var name; // Initialize camera system first.
-
-        this.initSystem('camera');
-
-        for (name in systems) {
-          if (name === 'camera') {
-            continue;
-          }
-
-          this.initSystem(name);
-        }
-      }
-    },
-
-    /**
-     * Initialize a system.
-     */
-    initSystem: {
-      value: function (name) {
-        if (this.systems[name]) {
-          return;
-        }
-
-        this.systems[name] = new systems[name](this);
-        this.systemNames.push(name);
-      }
-    },
-
-    /**
-     * Shut down scene on detach.
-     */
-    detachedCallback: {
-      value: function () {
-        // Remove from scene index.
-        var sceneIndex = scenes.indexOf(this);
-        scenes.splice(sceneIndex, 1);
-        window.removeEventListener('vrdisplaypresentchange', this.onVRPresentChangeBound);
-        window.removeEventListener('vrdisplayactivate', this.enterVRBound);
-        window.removeEventListener('vrdisplaydeactivate', this.exitVRBound);
-        window.removeEventListener('vrdisplayconnect', this.enterVRBound);
-        window.removeEventListener('vrdisplaydisconnect', this.exitVRTrueBound);
-        window.removeEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
-        window.removeEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
-        window.removeEventListener('sessionend', this.resize);
-        this.renderer.dispose();
-      }
-    },
-
-    /**
-     * Add ticks and tocks.
-     *
-     * @param {object} behavior - A component.
-     */
-    addBehavior: {
-      value: function (behavior) {
-        var behaviorArr;
-        var behaviors = this.behaviors;
-        var behaviorType; // Check if behavior has tick and/or tock and add the behavior to the appropriate list.
-
-        for (behaviorType in behaviors) {
-          if (!behavior[behaviorType]) {
-            continue;
-          }
-
-          behaviorArr = this.behaviors[behaviorType];
-
-          if (behaviorArr.indexOf(behavior) === -1) {
-            behaviorArr.push(behavior);
-          }
-        }
-      }
-    },
-
-    /**
-     * For tests.
-     */
-    getPointerLockElement: {
-      value: function () {
-        return document.pointerLockElement;
-      },
-      writable: window.debug
-    },
-
-    /**
-     * For tests.
-     */
-    checkHeadsetConnected: {
-      value: utils.device.checkHeadsetConnected,
-      writable: window.debug
-    },
-    enterAR: {
-      value: function () {
-        var errorMessage;
-
-        if (!this.hasWebXR) {
-          errorMessage = 'Failed to enter AR mode, WebXR not supported.';
-          throw new Error(errorMessage);
-        }
-
-        if (!utils.device.checkARSupport()) {
-          errorMessage = 'Failed to enter AR, WebXR immersive-ar mode not supported in your browser or device.';
-          throw new Error(errorMessage);
-        }
-
-        return this.enterVR(true);
-      }
-    },
-
-    /**
-     * Call `requestPresent` if WebVR or WebVR polyfill.
-     * Call `requestFullscreen` on desktop.
-     * Handle events, states, fullscreen styles.
-     *
-     * @param {bool?} useAR - if true, try immersive-ar mode
-     * @returns {Promise}
-     */
-    enterVR: {
-      value: function (useAR) {
-        var self = this;
-        var vrDisplay;
-        var vrManager = self.renderer.xr;
-        var xrInit; // Don't enter VR if already in VR.
-
-        if (this.is('vr-mode')) {
-          return Promise.resolve('Already in VR.');
-        } // Has VR.
-
-
-        if (this.checkHeadsetConnected() || this.isMobile) {
-          var rendererSystem = self.getAttribute('renderer');
-          vrManager.enabled = true;
-
-          if (this.hasWebXR) {
-            // XR API.
-            if (this.xrSession) {
-              this.xrSession.removeEventListener('end', this.exitVRBound);
-            }
-
-            var refspace = this.sceneEl.systems.webxr.sessionReferenceSpaceType;
-            vrManager.setReferenceSpaceType(refspace);
-            var xrMode = useAR ? 'immersive-ar' : 'immersive-vr';
-            xrInit = this.sceneEl.systems.webxr.sessionConfiguration;
-            return new Promise(function (resolve, reject) {
-              navigator.xr.requestSession(xrMode, xrInit).then(function requestSuccess(xrSession) {
-                self.xrSession = xrSession;
-                vrManager.layersEnabled = xrInit.requiredFeatures.indexOf('layers') !== -1;
-                vrManager.setSession(xrSession).then(function () {
-                  vrManager.setFoveation(rendererSystem.foveationLevel);
-                });
-                xrSession.addEventListener('end', self.exitVRBound);
-                enterVRSuccess(resolve);
-              }, function requestFail(error) {
-                var useAR = xrMode === 'immersive-ar';
-                var mode = useAR ? 'AR' : 'VR';
-                throw new Error('Failed to enter ' + mode + ' mode (`requestSession`) ' + error);
-              });
-            });
-          } else {
-            vrDisplay = utils.device.getVRDisplay();
-            vrManager.setDevice(vrDisplay);
-
-            if (vrDisplay.isPresenting && !window.hasNativeWebVRImplementation) {
-              enterVRSuccess();
-              return Promise.resolve();
-            }
-
-            var presentationAttributes = {
-              highRefreshRate: rendererSystem.highRefreshRate
-            };
-            return vrDisplay.requestPresent([{
-              source: this.canvas,
-              attributes: presentationAttributes
-            }]).then(enterVRSuccess, enterVRFailure);
-          }
-        } // No VR.
-
-
-        enterVRSuccess();
-        return Promise.resolve(); // Callback that happens on enter VR success or enter fullscreen (any API).
-
-        function enterVRSuccess(resolve) {
-          // vrdisplaypresentchange fires only once when the first requestPresent is completed;
-          // the first requestPresent could be called from ondisplayactivate and there is no way
-          // to setup everything from there. Thus, we need to emulate another vrdisplaypresentchange
-          // for the actual requestPresent. Need to make sure there are no issues with firing the
-          // vrdisplaypresentchange multiple times.
-          var event;
-
-          if (window.hasNativeWebVRImplementation && !window.hasNativeWebXRImplementation) {
-            event = new CustomEvent('vrdisplaypresentchange', {
-              detail: {
-                display: utils.device.getVRDisplay()
-              }
-            });
-            window.dispatchEvent(event);
-          }
-
-          if (useAR) {
-            self.addState('ar-mode');
-          } else {
-            self.addState('vr-mode');
-          }
-
-          self.emit('enter-vr', {
-            target: self
-          }); // Lock to landscape orientation on mobile.
-
-          if (!isWebXRAvailable && self.isMobile && screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape');
-          }
-
-          self.addFullScreenStyles(); // On mobile, the polyfill handles fullscreen.
-          // TODO: 07/16 Chromium builds break when `requestFullscreen`ing on a canvas
-          // that we are also `requestPresent`ing. Until then, don't fullscreen if headset
-          // connected.
-
-          if (!self.isMobile && !self.checkHeadsetConnected()) {
-            requestFullscreen(self.canvas);
-          }
-
-          self.resize();
-
-          if (resolve) {
-            resolve();
-          }
-        }
-
-        function enterVRFailure(err) {
-          self.removeState('vr-mode');
-
-          if (err && err.message) {
-            throw new Error('Failed to enter VR mode (`requestPresent`): ' + err.message);
-          } else {
-            throw new Error('Failed to enter VR mode (`requestPresent`).');
-          }
-        }
-      },
-      writable: true
-    },
-
-    /**
-    * Call `exitPresent` if WebVR / WebXR or WebVR polyfill.
-    * Handle events, states, fullscreen styles.
-    *
-    * @returns {Promise}
-    */
-    exitVR: {
-      value: function () {
-        var self = this;
-        var vrDisplay;
-        var vrManager = this.renderer.xr; // Don't exit VR if not in VR.
-
-        if (!this.is('vr-mode') && !this.is('ar-mode')) {
-          return Promise.resolve('Not in immersive mode.');
-        } // Handle exiting VR if not yet already and in a headset or polyfill.
-
-
-        if (this.checkHeadsetConnected() || this.isMobile) {
-          vrManager.enabled = false;
-          vrDisplay = utils.device.getVRDisplay();
-
-          if (this.hasWebXR) {
-            this.xrSession.removeEventListener('end', this.exitVRBound); // Capture promise to avoid errors.
-
-            this.xrSession.end().then(function () {}, function () {});
-            this.xrSession = undefined;
-            vrManager.setSession(null);
-          } else {
-            if (vrDisplay.isPresenting) {
-              return vrDisplay.exitPresent().then(exitVRSuccess, exitVRFailure);
-            }
-          }
-        } else {
-          exitFullscreen();
-        } // Handle exiting VR in all other cases (2D fullscreen, external exit VR event).
-
-
-        exitVRSuccess();
-        return Promise.resolve();
-
-        function exitVRSuccess() {
-          self.removeState('vr-mode');
-          self.removeState('ar-mode'); // Lock to landscape orientation on mobile.
-
-          if (self.isMobile && screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-          } // Exiting VR in embedded mode, no longer need fullscreen styles.
-
-
-          if (self.hasAttribute('embedded')) {
-            self.removeFullScreenStyles();
-          }
-
-          self.resize();
-
-          if (self.isIOS) {
-            utils.forceCanvasResizeSafariMobile(self.canvas);
-          }
-
-          self.renderer.setPixelRatio(window.devicePixelRatio);
-          self.emit('exit-vr', {
-            target: self
-          });
-        }
-
-        function exitVRFailure(err) {
-          if (err && err.message) {
-            throw new Error('Failed to exit VR mode (`exitPresent`): ' + err.message);
-          } else {
-            throw new Error('Failed to exit VR mode (`exitPresent`).');
-          }
-        }
-      },
-      writable: true
-    },
-    pointerRestricted: {
-      value: function () {
-        if (this.canvas) {
-          var pointerLockElement = this.getPointerLockElement();
-
-          if (pointerLockElement && pointerLockElement !== this.canvas && document.exitPointerLock) {
-            // Recreate pointer lock on the canvas, if taken on another element.
-            document.exitPointerLock();
-          }
-
-          if (this.canvas.requestPointerLock) {
-            this.canvas.requestPointerLock();
-          }
-        }
-      }
-    },
-    pointerUnrestricted: {
-      value: function () {
-        var pointerLockElement = this.getPointerLockElement();
-
-        if (pointerLockElement && pointerLockElement === this.canvas && document.exitPointerLock) {
-          document.exitPointerLock();
-        }
-      }
-    },
-
-    /**
-     * Handle `vrdisplaypresentchange` event for exiting VR through other means than
-     * `<ESC>` key. For example, GearVR back button on Oculus Browser.
-     */
-    onVRPresentChange: {
-      value: function (evt) {
-        // Polyfill places display inside the detail property
-        var display = evt.display || evt.detail.display; // Entering VR.
-
-        if (display && display.isPresenting) {
-          this.enterVR();
-          return;
-        } // Exiting VR.
-
-
-        this.exitVR();
-      }
-    },
-
-    /**
-     * Wraps Entity.getAttribute to take into account for systems.
-     * If system exists, then return system data rather than possible component data.
-     */
-    getAttribute: {
-      value: function (attr) {
-        var system = this.systems[attr];
-
-        if (system) {
-          return system.data;
-        }
-
-        return AEntity.prototype.getAttribute.call(this, attr);
-      }
-    },
-
-    /**
-     * `getAttribute` used to be `getDOMAttribute` and `getComputedAttribute` used to be
-     * what `getAttribute` is now. Now legacy code.
-     */
-    getComputedAttribute: {
-      value: function (attr) {
-        warn('`getComputedAttribute` is deprecated. Use `getAttribute` instead.');
-        this.getAttribute(attr);
-      }
-    },
-
-    /**
-     * Wraps Entity.getDOMAttribute to take into account for systems.
-     * If system exists, then return system data rather than possible component data.
-     */
-    getDOMAttribute: {
-      value: function (attr) {
-        var system = this.systems[attr];
-
-        if (system) {
-          return system.data;
-        }
-
-        return AEntity.prototype.getDOMAttribute.call(this, attr);
-      }
-    },
-
-    /**
-     * Wrap Entity.setAttribute to take into account for systems.
-     * If system exists, then skip component initialization checks and do a normal
-     * setAttribute.
-     */
-    setAttribute: {
-      value: function (attr, value, componentPropValue) {
-        var system = this.systems[attr];
-
-        if (system) {
-          ANode.prototype.setAttribute.call(this, attr, value);
-          system.updateProperties(value);
-          return;
-        }
-
-        AEntity.prototype.setAttribute.call(this, attr, value, componentPropValue);
-      }
-    },
-
-    /**
-     * @param {object} behavior - A component.
-     */
-    removeBehavior: {
-      value: function (behavior) {
-        var behaviorArr;
-        var behaviorType;
-        var behaviors = this.behaviors;
-        var index; // Check if behavior has tick and/or tock and remove the behavior from the appropriate
-        // array.
-
-        for (behaviorType in behaviors) {
-          if (!behavior[behaviorType]) {
-            continue;
-          }
-
-          behaviorArr = this.behaviors[behaviorType];
-          index = behaviorArr.indexOf(behavior);
-
-          if (index !== -1) {
-            behaviorArr.splice(index, 1);
-          }
-        }
-      }
-    },
-    resize: {
-      value: function () {
-        var camera = this.camera;
-        var canvas = this.canvas;
-        var embedded;
-        var isVRPresenting;
-        var size;
-        var isPresenting = this.renderer.xr.isPresenting;
-        isVRPresenting = this.renderer.xr.enabled && isPresenting; // Do not update renderer, if a camera or a canvas have not been injected.
-        // In VR mode, three handles canvas resize based on the dimensions returned by
-        // the getEyeParameters function of the WebVR API. These dimensions are independent of
-        // the window size, therefore should not be overwritten with the window's width and
-        // height, // except when in fullscreen mode.
-
-        if (!camera || !canvas || this.is('vr-mode') && (this.isMobile || isVRPresenting)) {
-          return;
-        } // Update camera.
-
-
-        embedded = this.getAttribute('embedded') && !this.is('vr-mode');
-        size = getCanvasSize(canvas, embedded, this.maxCanvasSize, this.is('vr-mode'));
-        camera.aspect = size.width / size.height;
-        camera.updateProjectionMatrix(); // Notify renderer of size change.
-
-        this.renderer.setSize(size.width, size.height, false);
-        this.emit('rendererresize', null, false);
-      },
-      writable: true
-    },
-    setupRenderer: {
-      value: function () {
-        var self = this;
-        var renderer;
-        var rendererAttr;
-        var rendererAttrString;
-        var rendererConfig;
-        rendererConfig = {
-          alpha: true,
-          antialias: !isMobile,
-          canvas: this.canvas,
-          logarithmicDepthBuffer: false,
-          powerPreference: 'high-performance'
-        };
-        this.maxCanvasSize = {
-          height: 1920,
-          width: 1920
-        };
-
-        if (this.hasAttribute('renderer')) {
-          rendererAttrString = this.getAttribute('renderer');
-          rendererAttr = utils.styleParser.parse(rendererAttrString);
-
-          if (rendererAttr.precision) {
-            rendererConfig.precision = rendererAttr.precision + 'p';
-          }
-
-          if (rendererAttr.antialias && rendererAttr.antialias !== 'auto') {
-            rendererConfig.antialias = rendererAttr.antialias === 'true';
-          }
-
-          if (rendererAttr.logarithmicDepthBuffer && rendererAttr.logarithmicDepthBuffer !== 'auto') {
-            rendererConfig.logarithmicDepthBuffer = rendererAttr.logarithmicDepthBuffer === 'true';
-          }
-
-          if (rendererAttr.alpha) {
-            rendererConfig.alpha = rendererAttr.alpha === 'true';
-          }
-
-          this.maxCanvasSize = {
-            width: rendererAttr.maxCanvasWidth ? parseInt(rendererAttr.maxCanvasWidth) : this.maxCanvasSize.width,
-            height: rendererAttr.maxCanvasHeight ? parseInt(rendererAttr.maxCanvasHeight) : this.maxCanvasSize.height
-          };
-        }
-
-        renderer = this.renderer = new THREE.WebGLRenderer(rendererConfig);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.sortObjects = false;
-
-        if (this.camera) {
-          renderer.xr.setPoseTarget(this.camera.el.object3D);
-        }
-
-        this.addEventListener('camera-set-active', function () {
-          renderer.xr.setPoseTarget(self.camera.el.object3D);
-        });
-      },
-      writable: window.debug
-    },
-
-    /**
-     * Handler attached to elements to help scene know when to kick off.
-     * Scene waits for all entities to load.
-     */
-    play: {
-      value: function () {
-        var self = this;
-        var sceneEl = this;
-
-        if (this.renderStarted) {
-          AEntity.prototype.play.call(this);
-          return;
-        }
-
-        this.addEventListener('loaded', function () {
-          var renderer = this.renderer;
-          var vrDisplay;
-          var vrManager = this.renderer.xr;
-          AEntity.prototype.play.call(this); // .play() *before* render.
-
-          if (sceneEl.renderStarted) {
-            return;
-          }
-
-          sceneEl.resize(); // Kick off render loop.
-
-          if (sceneEl.renderer) {
-            if (window.performance) {
-              window.performance.mark('render-started');
-            }
-
-            loadingScreen.remove();
-            vrDisplay = utils.device.getVRDisplay();
-
-            if (vrDisplay && vrDisplay.isPresenting) {
-              vrManager.setDevice(vrDisplay);
-              vrManager.enabled = true;
-              sceneEl.enterVR();
-            }
-
-            renderer.setAnimationLoop(this.render);
-            sceneEl.renderStarted = true;
-            sceneEl.emit('renderstart');
-          }
-        }); // setTimeout to wait for all nodes to attach and run their callbacks.
-
-        setTimeout(function () {
-          AEntity.prototype.load.call(self);
-        });
-      }
-    },
-
-    /**
-     * Wrap `updateComponent` to not initialize the component if the component has a system
-     * (aframevr/aframe#2365).
-     */
-    updateComponent: {
-      value: function (componentName) {
-        if (componentName in systems) {
-          return;
-        }
-
-        AEntity.prototype.updateComponent.apply(this, arguments);
-      }
-    },
-
-    /**
-     * Behavior-updater meant to be called from scene render.
-     * Abstracted to a different function to facilitate unit testing (`scene.tick()`) without
-     * needing to render.
-     */
-    tick: {
-      value: function (time, timeDelta) {
-        var i;
-        var systems = this.systems; // Components.
-
-        for (i = 0; i < this.behaviors.tick.length; i++) {
-          if (!this.behaviors.tick[i].el.isPlaying) {
-            continue;
-          }
-
-          this.behaviors.tick[i].tick(time, timeDelta);
-        } // Systems.
-
-
-        for (i = 0; i < this.systemNames.length; i++) {
-          if (!systems[this.systemNames[i]].tick) {
-            continue;
-          }
-
-          systems[this.systemNames[i]].tick(time, timeDelta);
-        }
-      }
-    },
-
-    /**
-     * Behavior-updater meant to be called after scene render for post processing purposes.
-     * Abstracted to a different function to facilitate unit testing (`scene.tock()`) without
-     * needing to render.
-     */
-    tock: {
-      value: function (time, timeDelta, camera) {
-        var i;
-        var systems = this.systems; // Components.
-
-        for (i = 0; i < this.behaviors.tock.length; i++) {
-          if (!this.behaviors.tock[i].el.isPlaying) {
-            continue;
-          }
-
-          this.behaviors.tock[i].tock(time, timeDelta, camera);
-        } // Systems.
-
-
-        for (i = 0; i < this.systemNames.length; i++) {
-          if (!systems[this.systemNames[i]].tock) {
-            continue;
-          }
-
-          systems[this.systemNames[i]].tock(time, timeDelta, camera);
-        }
-      }
-    },
-
-    /**
-     * The render loop.
-     *
-     * Updates animations.
-     * Updates behaviors.
-     * Renders with request animation frame.
-     */
-    render: {
-      value: function (time, frame) {
-        var renderer = this.renderer;
-        this.frame = frame;
-        this.delta = this.clock.getDelta() * 1000;
-        this.time = this.clock.elapsedTime * 1000;
-
-        if (this.isPlaying) {
-          this.tick(this.time, this.delta);
-        }
-
-        var savedBackground = null;
-
-        if (this.is('ar-mode')) {
-          // In AR mode, don't render the default background. Hide it, then
-          // restore it again after rendering.
-          savedBackground = this.object3D.background;
-          this.object3D.background = null;
-        }
-
-        renderer.render(this.object3D, this.camera);
-
-        if (savedBackground) {
-          this.object3D.background = savedBackground;
-        }
-      },
-      writable: true
+    };
+
+    self.resize = bind(self.resize, self);
+    self.render = bind(self.render, self);
+    self.systems = {};
+    self.systemNames = [];
+    self.time = self.delta = 0;
+    self.behaviors = {
+      tick: [],
+      tock: []
+    };
+    self.hasLoaded = false;
+    self.isPlaying = false;
+    self.originalHTML = self.innerHTML;
+  }
+
+  addFullScreenStyles() {
+    document.documentElement.classList.add('a-fullscreen');
+  }
+
+  removeFullScreenStyles() {
+    document.documentElement.classList.remove('a-fullscreen');
+  }
+
+  connectedCallback() {
+    // Defer if DOM is not ready.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', this.connectedCallback.bind(this));
+      return;
     }
-  })
-});
+
+    this.doConnectedCallback();
+  }
+
+  doConnectedCallback() {
+    var self = this;
+    var embedded = this.hasAttribute('embedded'); // Default components.
+
+    this.setAttribute('inspector', '');
+    this.setAttribute('keyboard-shortcuts', '');
+    this.setAttribute('screenshot', '');
+    this.setAttribute('vr-mode-ui', '');
+    this.setAttribute('device-orientation-permission-ui', '');
+    super.connectedCallback(); // Renderer initialization
+
+    setupCanvas(this);
+    this.setupRenderer();
+    loadingScreen.setup(this, getCanvasSize);
+    this.resize();
+
+    if (!embedded) {
+      this.addFullScreenStyles();
+    }
+
+    initPostMessageAPI(this);
+    initMetaTags(this);
+    initWakelock(this); // Handler to exit VR (e.g., Oculus Browser back button).
+
+    this.onVRPresentChangeBound = bind(this.onVRPresentChange, this);
+    window.addEventListener('vrdisplaypresentchange', this.onVRPresentChangeBound); // Bind functions.
+
+    this.enterVRBound = function () {
+      self.enterVR();
+    };
+
+    this.exitVRBound = function () {
+      self.exitVR();
+    };
+
+    this.exitVRTrueBound = function () {
+      self.exitVR(true);
+    };
+
+    this.pointerRestrictedBound = function () {
+      self.pointerRestricted();
+    };
+
+    this.pointerUnrestrictedBound = function () {
+      self.pointerUnrestricted();
+    };
+
+    if (!isWebXRAvailable) {
+      // Exit VR on `vrdisplaydeactivate` (e.g. taking off Rift headset).
+      window.addEventListener('vrdisplaydeactivate', this.exitVRBound); // Exit VR on `vrdisplaydisconnect` (e.g. unplugging Rift headset).
+
+      window.addEventListener('vrdisplaydisconnect', this.exitVRTrueBound); // Register for mouse restricted events while in VR
+      // (e.g. mouse no longer available on desktop 2D view)
+
+      window.addEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound); // Register for mouse unrestricted events while in VR
+      // (e.g. mouse once again available on desktop 2D view)
+
+      window.addEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
+    }
+
+    window.addEventListener('sessionend', this.resize); // Camera set up by camera system.
+
+    this.addEventListener('cameraready', function () {
+      self.attachedCallbackPostCamera();
+    });
+    this.initSystems(); // WebXR Immersive navigation handler.
+
+    if (this.hasWebXR && navigator.xr && navigator.xr.addEventListener) {
+      navigator.xr.addEventListener('sessiongranted', function () {
+        self.enterVR();
+      });
+    }
+  }
+
+  attachedCallbackPostCamera() {
+    var resize;
+    var self = this;
+    window.addEventListener('load', resize);
+    window.addEventListener('resize', function () {
+      // Workaround for a Webkit bug (https://bugs.webkit.org/show_bug.cgi?id=170595)
+      // where the window does not contain the correct viewport size
+      // after an orientation change. The window size is correct if the operation
+      // is postponed a few milliseconds.
+      // self.resize can be called directly once the bug above is fixed.
+      if (self.isIOS) {
+        setTimeout(self.resize, 100);
+      } else {
+        self.resize();
+      }
+    });
+    this.play(); // Add to scene index.
+
+    scenes.push(this);
+  }
+  /**
+   * Initialize all systems.
+   */
+
+
+  initSystems() {
+    var name; // Initialize camera system first.
+
+    this.initSystem('camera');
+
+    for (name in systems) {
+      if (name === 'camera') {
+        continue;
+      }
+
+      this.initSystem(name);
+    }
+  }
+  /**
+   * Initialize a system.
+   */
+
+
+  initSystem(name) {
+    if (this.systems[name]) {
+      return;
+    }
+
+    this.systems[name] = new systems[name](this);
+    this.systemNames.push(name);
+  }
+  /**
+   * Shut down scene on detach.
+   */
+
+
+  disconnectedCallback() {
+    // Remove from scene index.
+    var sceneIndex = scenes.indexOf(this);
+    super.disconnectedCallback();
+    scenes.splice(sceneIndex, 1);
+    window.removeEventListener('vrdisplaypresentchange', this.onVRPresentChangeBound);
+    window.removeEventListener('vrdisplayactivate', this.enterVRBound);
+    window.removeEventListener('vrdisplaydeactivate', this.exitVRBound);
+    window.removeEventListener('vrdisplayconnect', this.enterVRBound);
+    window.removeEventListener('vrdisplaydisconnect', this.exitVRTrueBound);
+    window.removeEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
+    window.removeEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
+    window.removeEventListener('sessionend', this.resize);
+    this.renderer.dispose();
+  }
+  /**
+   * Add ticks and tocks.
+   *
+   * @param {object} behavior - A component.
+   */
+
+
+  addBehavior(behavior) {
+    var behaviorArr;
+    var behaviors = this.behaviors;
+    var behaviorType; // Check if behavior has tick and/or tock and add the behavior to the appropriate list.
+
+    for (behaviorType in behaviors) {
+      if (!behavior[behaviorType]) {
+        continue;
+      }
+
+      behaviorArr = this.behaviors[behaviorType];
+
+      if (behaviorArr.indexOf(behavior) === -1) {
+        behaviorArr.push(behavior);
+      }
+    }
+  }
+  /**
+   * For tests.
+   */
+
+
+  getPointerLockElement() {
+    return document.pointerLockElement;
+  }
+  /**
+   * For tests.
+   */
+
+
+  checkHeadsetConnected() {
+    return utils.device.checkHeadsetConnected();
+  }
+
+  enterAR() {
+    var errorMessage;
+
+    if (!this.hasWebXR) {
+      errorMessage = 'Failed to enter AR mode, WebXR not supported.';
+      throw new Error(errorMessage);
+    }
+
+    if (!utils.device.checkARSupport()) {
+      errorMessage = 'Failed to enter AR, WebXR immersive-ar mode not supported in your browser or device.';
+      throw new Error(errorMessage);
+    }
+
+    return this.enterVR(true);
+  }
+  /**
+   * Call `requestPresent` if WebVR or WebVR polyfill.
+   * Call `requestFullscreen` on desktop.
+   * Handle events, states, fullscreen styles.
+   *
+   * @param {bool?} useAR - if true, try immersive-ar mode
+   * @returns {Promise}
+   */
+
+
+  enterVR(useAR) {
+    var self = this;
+    var vrDisplay;
+    var vrManager = self.renderer.xr;
+    var xrInit; // Don't enter VR if already in VR.
+
+    if (this.is('vr-mode')) {
+      return Promise.resolve('Already in VR.');
+    } // Has VR.
+
+
+    if (this.checkHeadsetConnected() || this.isMobile) {
+      var rendererSystem = self.getAttribute('renderer');
+      vrManager.enabled = true;
+
+      if (this.hasWebXR) {
+        // XR API.
+        if (this.xrSession) {
+          this.xrSession.removeEventListener('end', this.exitVRBound);
+        }
+
+        var refspace = this.sceneEl.systems.webxr.sessionReferenceSpaceType;
+        vrManager.setReferenceSpaceType(refspace);
+        var xrMode = useAR ? 'immersive-ar' : 'immersive-vr';
+        xrInit = this.sceneEl.systems.webxr.sessionConfiguration;
+        return new Promise(function (resolve, reject) {
+          navigator.xr.requestSession(xrMode, xrInit).then(function requestSuccess(xrSession) {
+            self.xrSession = xrSession;
+            vrManager.layersEnabled = xrInit.requiredFeatures.indexOf('layers') !== -1;
+            vrManager.setSession(xrSession).then(function () {
+              vrManager.setFoveation(rendererSystem.foveationLevel);
+            });
+            xrSession.addEventListener('end', self.exitVRBound);
+            enterVRSuccess(resolve);
+          }, function requestFail(error) {
+            var useAR = xrMode === 'immersive-ar';
+            var mode = useAR ? 'AR' : 'VR';
+            throw new Error('Failed to enter ' + mode + ' mode (`requestSession`) ' + error);
+          });
+        });
+      } else {
+        vrDisplay = utils.device.getVRDisplay();
+        vrManager.setDevice(vrDisplay);
+
+        if (vrDisplay.isPresenting && !window.hasNativeWebVRImplementation) {
+          enterVRSuccess();
+          return Promise.resolve();
+        }
+
+        var presentationAttributes = {
+          highRefreshRate: rendererSystem.highRefreshRate
+        };
+        return vrDisplay.requestPresent([{
+          source: this.canvas,
+          attributes: presentationAttributes
+        }]).then(enterVRSuccess, enterVRFailure);
+      }
+    } // No VR.
+
+
+    enterVRSuccess();
+    return Promise.resolve(); // Callback that happens on enter VR success or enter fullscreen (any API).
+
+    function enterVRSuccess(resolve) {
+      // vrdisplaypresentchange fires only once when the first requestPresent is completed;
+      // the first requestPresent could be called from ondisplayactivate and there is no way
+      // to setup everything from there. Thus, we need to emulate another vrdisplaypresentchange
+      // for the actual requestPresent. Need to make sure there are no issues with firing the
+      // vrdisplaypresentchange multiple times.
+      var event;
+
+      if (window.hasNativeWebVRImplementation && !window.hasNativeWebXRImplementation) {
+        event = new CustomEvent('vrdisplaypresentchange', {
+          detail: {
+            display: utils.device.getVRDisplay()
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
+      if (useAR) {
+        self.addState('ar-mode');
+      } else {
+        self.addState('vr-mode');
+      }
+
+      self.emit('enter-vr', {
+        target: self
+      }); // Lock to landscape orientation on mobile.
+
+      if (!isWebXRAvailable && self.isMobile && screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape');
+      }
+
+      self.addFullScreenStyles(); // On mobile, the polyfill handles fullscreen.
+      // TODO: 07/16 Chromium builds break when `requestFullscreen`ing on a canvas
+      // that we are also `requestPresent`ing. Until then, don't fullscreen if headset
+      // connected.
+
+      if (!self.isMobile && !self.checkHeadsetConnected()) {
+        requestFullscreen(self.canvas);
+      }
+
+      self.resize();
+
+      if (resolve) {
+        resolve();
+      }
+    }
+
+    function enterVRFailure(err) {
+      self.removeState('vr-mode');
+
+      if (err && err.message) {
+        throw new Error('Failed to enter VR mode (`requestPresent`): ' + err.message);
+      } else {
+        throw new Error('Failed to enter VR mode (`requestPresent`).');
+      }
+    }
+  }
+  /**
+  * Call `exitPresent` if WebVR / WebXR or WebVR polyfill.
+  * Handle events, states, fullscreen styles.
+  *
+  * @returns {Promise}
+  */
+
+
+  exitVR() {
+    var self = this;
+    var vrDisplay;
+    var vrManager = this.renderer.xr; // Don't exit VR if not in VR.
+
+    if (!this.is('vr-mode') && !this.is('ar-mode')) {
+      return Promise.resolve('Not in immersive mode.');
+    } // Handle exiting VR if not yet already and in a headset or polyfill.
+
+
+    if (this.checkHeadsetConnected() || this.isMobile) {
+      vrManager.enabled = false;
+      vrDisplay = utils.device.getVRDisplay();
+
+      if (this.hasWebXR) {
+        this.xrSession.removeEventListener('end', this.exitVRBound); // Capture promise to avoid errors.
+
+        this.xrSession.end().then(function () {}, function () {});
+        this.xrSession = undefined;
+      } else {
+        if (vrDisplay.isPresenting) {
+          return vrDisplay.exitPresent().then(exitVRSuccess, exitVRFailure);
+        }
+      }
+    } else {
+      exitFullscreen();
+    } // Handle exiting VR in all other cases (2D fullscreen, external exit VR event).
+
+
+    exitVRSuccess();
+    return Promise.resolve();
+
+    function exitVRSuccess() {
+      self.removeState('vr-mode');
+      self.removeState('ar-mode'); // Lock to landscape orientation on mobile.
+
+      if (self.isMobile && screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      } // Exiting VR in embedded mode, no longer need fullscreen styles.
+
+
+      if (self.hasAttribute('embedded')) {
+        self.removeFullScreenStyles();
+      }
+
+      self.resize();
+
+      if (self.isIOS) {
+        utils.forceCanvasResizeSafariMobile(self.canvas);
+      }
+
+      self.renderer.setPixelRatio(window.devicePixelRatio);
+      self.emit('exit-vr', {
+        target: self
+      });
+    }
+
+    function exitVRFailure(err) {
+      if (err && err.message) {
+        throw new Error('Failed to exit VR mode (`exitPresent`): ' + err.message);
+      } else {
+        throw new Error('Failed to exit VR mode (`exitPresent`).');
+      }
+    }
+  }
+
+  pointerRestricted() {
+    if (this.canvas) {
+      var pointerLockElement = this.getPointerLockElement();
+
+      if (pointerLockElement && pointerLockElement !== this.canvas && document.exitPointerLock) {
+        // Recreate pointer lock on the canvas, if taken on another element.
+        document.exitPointerLock();
+      }
+
+      if (this.canvas.requestPointerLock) {
+        this.canvas.requestPointerLock();
+      }
+    }
+  }
+
+  pointerUnrestricted() {
+    var pointerLockElement = this.getPointerLockElement();
+
+    if (pointerLockElement && pointerLockElement === this.canvas && document.exitPointerLock) {
+      document.exitPointerLock();
+    }
+  }
+  /**
+   * Handle `vrdisplaypresentchange` event for exiting VR through other means than
+   * `<ESC>` key. For example, GearVR back button on Oculus Browser.
+   */
+
+
+  onVRPresentChange(evt) {
+    // Polyfill places display inside the detail property
+    var display = evt.display || evt.detail.display; // Entering VR.
+
+    if (display && display.isPresenting) {
+      this.enterVR();
+      return;
+    } // Exiting VR.
+
+
+    this.exitVR();
+  }
+  /**
+   * Wraps Entity.getAttribute to take into account for systems.
+   * If system exists, then return system data rather than possible component data.
+   */
+
+
+  getAttribute(attr) {
+    var system = this.systems[attr];
+
+    if (system) {
+      return system.data;
+    }
+
+    return AEntity.prototype.getAttribute.call(this, attr);
+  }
+  /**
+   * `getAttribute` used to be `getDOMAttribute` and `getComputedAttribute` used to be
+   * what `getAttribute` is now. Now legacy code.
+   */
+
+
+  getComputedAttribut(attr) {
+    warn('`getComputedAttribute` is deprecated. Use `getAttribute` instead.');
+    this.getAttribute(attr);
+  }
+  /**
+   * Wraps Entity.getDOMAttribute to take into account for systems.
+   * If system exists, then return system data rather than possible component data.
+   */
+
+
+  getDOMAttribute(attr) {
+    var system = this.systems[attr];
+
+    if (system) {
+      return system.data;
+    }
+
+    return AEntity.prototype.getDOMAttribute.call(this, attr);
+  }
+  /**
+   * Wrap Entity.setAttribute to take into account for systems.
+   * If system exists, then skip component initialization checks and do a normal
+   * setAttribute.
+   */
+
+
+  setAttribute(attr, value, componentPropValue) {
+    var system = this.systems[attr];
+
+    if (system) {
+      ANode.prototype.setAttribute.call(this, attr, value);
+      system.updateProperties(value);
+      return;
+    }
+
+    AEntity.prototype.setAttribute.call(this, attr, value, componentPropValue);
+  }
+  /**
+   * @param {object} behavior - A component.
+   */
+
+
+  removeBehavior(behavior) {
+    var behaviorArr;
+    var behaviorType;
+    var behaviors = this.behaviors;
+    var index; // Check if behavior has tick and/or tock and remove the behavior from the appropriate
+    // array.
+
+    for (behaviorType in behaviors) {
+      if (!behavior[behaviorType]) {
+        continue;
+      }
+
+      behaviorArr = this.behaviors[behaviorType];
+      index = behaviorArr.indexOf(behavior);
+
+      if (index !== -1) {
+        behaviorArr.splice(index, 1);
+      }
+    }
+  }
+
+  resize() {
+    var camera = this.camera;
+    var canvas = this.canvas;
+    var embedded;
+    var isVRPresenting;
+    var size;
+    var isPresenting = this.renderer.xr.isPresenting;
+    isVRPresenting = this.renderer.xr.enabled && isPresenting; // Do not update renderer, if a camera or a canvas have not been injected.
+    // In VR mode, three handles canvas resize based on the dimensions returned by
+    // the getEyeParameters function of the WebVR API. These dimensions are independent of
+    // the window size, therefore should not be overwritten with the window's width and
+    // height, // except when in fullscreen mode.
+
+    if (!camera || !canvas || this.is('vr-mode') && (this.isMobile || isVRPresenting)) {
+      return;
+    } // Update camera.
+
+
+    embedded = this.getAttribute('embedded') && !this.is('vr-mode');
+    size = getCanvasSize(canvas, embedded, this.maxCanvasSize, this.is('vr-mode'));
+    camera.aspect = size.width / size.height;
+    camera.updateProjectionMatrix(); // Notify renderer of size change.
+
+    this.renderer.setSize(size.width, size.height, false);
+    this.emit('rendererresize', null, false);
+  }
+
+  setupRenderer() {
+    var self = this;
+    var renderer;
+    var rendererAttr;
+    var rendererAttrString;
+    var rendererConfig;
+    rendererConfig = {
+      alpha: true,
+      antialias: !isMobile,
+      canvas: this.canvas,
+      logarithmicDepthBuffer: false,
+      powerPreference: 'high-performance'
+    };
+    this.maxCanvasSize = {
+      height: 1920,
+      width: 1920
+    };
+
+    if (this.hasAttribute('renderer')) {
+      rendererAttrString = this.getAttribute('renderer');
+      rendererAttr = utils.styleParser.parse(rendererAttrString);
+
+      if (rendererAttr.precision) {
+        rendererConfig.precision = rendererAttr.precision + 'p';
+      }
+
+      if (rendererAttr.antialias && rendererAttr.antialias !== 'auto') {
+        rendererConfig.antialias = rendererAttr.antialias === 'true';
+      }
+
+      if (rendererAttr.logarithmicDepthBuffer && rendererAttr.logarithmicDepthBuffer !== 'auto') {
+        rendererConfig.logarithmicDepthBuffer = rendererAttr.logarithmicDepthBuffer === 'true';
+      }
+
+      if (rendererAttr.alpha) {
+        rendererConfig.alpha = rendererAttr.alpha === 'true';
+      }
+
+      this.maxCanvasSize = {
+        width: rendererAttr.maxCanvasWidth ? parseInt(rendererAttr.maxCanvasWidth) : this.maxCanvasSize.width,
+        height: rendererAttr.maxCanvasHeight ? parseInt(rendererAttr.maxCanvasHeight) : this.maxCanvasSize.height
+      };
+    }
+
+    renderer = this.renderer = new THREE.WebGLRenderer(rendererConfig);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.sortObjects = false;
+
+    if (this.camera) {
+      renderer.xr.setPoseTarget(this.camera.el.object3D);
+    }
+
+    this.addEventListener('camera-set-active', function () {
+      renderer.xr.setPoseTarget(self.camera.el.object3D);
+    });
+  }
+  /**
+   * Handler attached to elements to help scene know when to kick off.
+   * Scene waits for all entities to load.
+   */
+
+
+  play() {
+    var self = this;
+    var sceneEl = this;
+
+    if (this.renderStarted) {
+      AEntity.prototype.play.call(this);
+      return;
+    }
+
+    this.addEventListener('loaded', function () {
+      var renderer = this.renderer;
+      var vrDisplay;
+      var vrManager = this.renderer.xr;
+      AEntity.prototype.play.call(this); // .play() *before* render.
+
+      if (sceneEl.renderStarted) {
+        return;
+      }
+
+      sceneEl.resize(); // Kick off render loop.
+
+      if (sceneEl.renderer) {
+        if (window.performance) {
+          window.performance.mark('render-started');
+        }
+
+        loadingScreen.remove();
+        vrDisplay = utils.device.getVRDisplay();
+
+        if (vrDisplay && vrDisplay.isPresenting) {
+          vrManager.setDevice(vrDisplay);
+          vrManager.enabled = true;
+          sceneEl.enterVR();
+        }
+
+        renderer.setAnimationLoop(this.render);
+        sceneEl.renderStarted = true;
+        sceneEl.emit('renderstart');
+      }
+    }); // setTimeout to wait for all nodes to attach and run their callbacks.
+
+    setTimeout(function () {
+      AEntity.prototype.load.call(self);
+    });
+  }
+  /**
+   * Wrap `updateComponent` to not initialize the component if the component has a system
+   * (aframevr/aframe#2365).
+   */
+
+
+  updateComponent(componentName) {
+    if (componentName in systems) {
+      return;
+    }
+
+    AEntity.prototype.updateComponent.apply(this, arguments);
+  }
+  /**
+   * Behavior-updater meant to be called from scene render.
+   * Abstracted to a different function to facilitate unit testing (`scene.tick()`) without
+   * needing to render.
+   */
+
+
+  tick(time, timeDelta) {
+    var i;
+    var systems = this.systems; // Components.
+
+    for (i = 0; i < this.behaviors.tick.length; i++) {
+      if (!this.behaviors.tick[i].el.isPlaying) {
+        continue;
+      }
+
+      this.behaviors.tick[i].tick(time, timeDelta);
+    } // Systems.
+
+
+    for (i = 0; i < this.systemNames.length; i++) {
+      if (!systems[this.systemNames[i]].tick) {
+        continue;
+      }
+
+      systems[this.systemNames[i]].tick(time, timeDelta);
+    }
+  }
+  /**
+   * Behavior-updater meant to be called after scene render for post processing purposes.
+   * Abstracted to a different function to facilitate unit testing (`scene.tock()`) without
+   * needing to render.
+   */
+
+
+  tock(time, timeDelta, camera) {
+    var i;
+    var systems = this.systems; // Components.
+
+    for (i = 0; i < this.behaviors.tock.length; i++) {
+      if (!this.behaviors.tock[i].el.isPlaying) {
+        continue;
+      }
+
+      this.behaviors.tock[i].tock(time, timeDelta, camera);
+    } // Systems.
+
+
+    for (i = 0; i < this.systemNames.length; i++) {
+      if (!systems[this.systemNames[i]].tock) {
+        continue;
+      }
+
+      systems[this.systemNames[i]].tock(time, timeDelta, camera);
+    }
+  }
+  /**
+   * The render loop.
+   *
+   * Updates animations.
+   * Updates behaviors.
+   * Renders with request animation frame.
+   */
+
+
+  render(time, frame) {
+    var renderer = this.renderer;
+    this.frame = frame;
+    this.delta = this.clock.getDelta() * 1000;
+    this.time = this.clock.elapsedTime * 1000;
+
+    if (this.isPlaying) {
+      this.tick(this.time, this.delta);
+    }
+
+    var savedBackground = null;
+
+    if (this.is('ar-mode')) {
+      // In AR mode, don't render the default background. Hide it, then
+      // restore it again after rendering.
+      savedBackground = this.object3D.background;
+      this.object3D.background = null;
+    }
+
+    renderer.render(this.object3D, this.camera);
+
+    if (savedBackground) {
+      this.object3D.background = savedBackground;
+    }
+  }
+
+}
 /**
  * Return size constrained to maxSize - maintaining aspect ratio.
  *
@@ -32278,6 +32305,7 @@ module.exports.AScene = registerElement('a-scene', {
  * @param {object} maxSize - Max size parameters (width and height).
  * @returns {object} Width and height.
  */
+
 
 function constrainSizeTo(size, maxSize) {
   var aspectRatio;
@@ -32305,6 +32333,8 @@ function constrainSizeTo(size, maxSize) {
 
   return size;
 }
+
+window.customElements.define('a-scene', AScene);
 /**
  * Return the canvas size where the scene will be rendered.
  * Will be always the window size except when the scene is embedded.
@@ -32316,7 +32346,6 @@ function constrainSizeTo(size, maxSize) {
  * @param {object} max - Max size parameters
  * @param {boolean} isVR - If in VR
  */
-
 
 function getCanvasSize(canvasEl, embedded, maxSize, isVR) {
   if (!canvasEl.parentElement) {
@@ -32423,7 +32452,8 @@ function setupCanvas(sceneEl) {
   }
 }
 
-module.exports.setupCanvas = setupCanvas; // For testing.
+module.exports.setupCanvas = setupCanvas;
+module.exports.AScene = AScene;
 
 /***/ }),
 
@@ -34951,7 +34981,7 @@ __webpack_require__(/*! ./extras/components/ */ "./src/extras/components/index.j
 
 __webpack_require__(/*! ./extras/primitives/ */ "./src/extras/primitives/index.js");
 
-console.log('A-Frame Version: 1.3.0 (Date 2022-11-25, Commit #c95b883f)');
+console.log('A-Frame Version: 1.4.0 (Date 2023-01-02, Commit #23933ef2)');
 console.log('THREE Version (https://github.com/supermedium/three.js):', pkg.dependencies['super-three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
 module.exports = window.AFRAME = {
@@ -36623,7 +36653,7 @@ function fetchScript(src) {
 module.exports.System = registerSystem('gltf-model', {
   schema: {
     dracoDecoderPath: {
-      default: ''
+      default: 'https://www.gstatic.com/draco/versioned/decoders/1.5.5/'
     },
     basisTranscoderPath: {
       default: ''
@@ -38058,6 +38088,12 @@ function checkARSupport() {
 }
 
 module.exports.checkARSupport = checkARSupport;
+
+function checkVRSupport() {
+  return supportsVRSession;
+}
+
+module.exports.checkVRSupport = checkVRSupport;
 /**
  * Checks if browser is mobile and not stand-alone dedicated vr device.
  * @return {Boolean} True if mobile browser detected.
@@ -38369,7 +38405,14 @@ module.exports.throttle = function (functionToThrottle, minimumInterval, optiona
  * Returns throttle function that gets called at most once every interval.
  * If there are multiple calls in the last interval we call the function one additional
  * time.
- * It behaves like a throttle except for the very last call that gets deferred until the end of the interval.
+ * It behaves like throttle except for the very last call that gets deferred until the end of the interval.
+ * This is useful when an event is used to trigger synchronization of state, and there is a need to converge
+ * to the correct final state following a burst of events.
+ *
+ * Example use cases:
+ * - synchronizing state based on the componentchanged event
+ * - following a mouse pointer using the mousemove event
+ * - integrating with THREE.TransformControls, via the objectChange event.
  *
  * @param {function} functionToThrottle
  * @param {number} minimumInterval - Minimal interval between calls (milliseconds).
@@ -38378,7 +38421,7 @@ module.exports.throttle = function (functionToThrottle, minimumInterval, optiona
  */
 
 
-module.exports.throttleComponentChanged = function (functionToThrottle, minimumInterval, optionalContext) {
+module.exports.throttleLeadingAndTrailing = function (functionToThrottle, minimumInterval, optionalContext) {
   var lastTime;
   var deferTimer;
 
@@ -40943,15 +40986,17 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_URL_IMPORT_0___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z%27 fill=%27%23fff%27/%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z%27 fill=%27%23fff%27/%3E%3C/svg%3E"), __webpack_require__.b);
 var ___CSS_LOADER_URL_IMPORT_1___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z%27 fill=%27%23fff%27/%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z%27 fill=%27%23fff%27/%3E%3Cpath d=%27M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z%27 fill=%27%23fff%27/%3E%3C/svg%3E"), __webpack_require__.b);
-var ___CSS_LOADER_URL_IMPORT_2___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E"), __webpack_require__.b);
-var ___CSS_LOADER_URL_IMPORT_3___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E"), __webpack_require__.b);
+var ___CSS_LOADER_URL_IMPORT_2___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3C%3Fxml version=%271.0%27 encoding=%27UTF-8%27 standalone=%27no%27%3F%3E%3Csvg width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27 version=%271.1%27 id=%27svg320%27 sodipodi:docname=%27fullscreen-aframe.svg%27 xml:space=%27preserve%27 inkscape:version=%271.2.1 %289c6d41e  2022-07-14%29%27 xmlns:inkscape=%27http://www.inkscape.org/namespaces/inkscape%27 xmlns:sodipodi=%27http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd%27 xmlns=%27http://www.w3.org/2000/svg%27 xmlns:svg=%27http://www.w3.org/2000/svg%27 xmlns:rdf=%27http://www.w3.org/1999/02/22-rdf-syntax-ns%23%27 xmlns:cc=%27http://creativecommons.org/ns%23%27 xmlns:dc=%27http://purl.org/dc/elements/1.1/%27%3E%3Cdefs id=%27defs324%27 /%3E%3Csodipodi:namedview id=%27namedview322%27 pagecolor=%27%23ffffff%27 bordercolor=%27%23000000%27 borderopacity=%270.25%27 inkscape:showpageshadow=%272%27 inkscape:pageopacity=%270.0%27 inkscape:pagecheckerboard=%270%27 inkscape:deskcolor=%27%23d1d1d1%27 showgrid=%27false%27 inkscape:zoom=%273.8064516%27 inkscape:cx=%2791.423729%27 inkscape:cy=%27-1.4449153%27 inkscape:window-width=%271440%27 inkscape:window-height=%27847%27 inkscape:window-x=%2732%27 inkscape:window-y=%2725%27 inkscape:window-maximized=%270%27 inkscape:current-layer=%27svg320%27 /%3E%3Ctitle id=%27title312%27%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z%27 fill=%27%23fff%27 id=%27path314%27 style=%27fill:%23ffffff%27 /%3E%3Cg id=%27g356%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g358%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g360%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g362%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g364%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g366%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g368%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g370%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g372%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g374%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g376%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g378%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g380%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g382%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g384%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cmetadata id=%27metadata561%27%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=%27%27%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d=%27m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4%27 id=%27path596%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4%27 id=%27path598%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4%27 id=%27path600%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616%27 id=%27path602%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3C/svg%3E */ "data:image/svg+xml,%3C%3Fxml version=%271.0%27 encoding=%27UTF-8%27 standalone=%27no%27%3F%3E%3Csvg width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27 version=%271.1%27 id=%27svg320%27 sodipodi:docname=%27fullscreen-aframe.svg%27 xml:space=%27preserve%27 inkscape:version=%271.2.1 %289c6d41e  2022-07-14%29%27 xmlns:inkscape=%27http://www.inkscape.org/namespaces/inkscape%27 xmlns:sodipodi=%27http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd%27 xmlns=%27http://www.w3.org/2000/svg%27 xmlns:svg=%27http://www.w3.org/2000/svg%27 xmlns:rdf=%27http://www.w3.org/1999/02/22-rdf-syntax-ns%23%27 xmlns:cc=%27http://creativecommons.org/ns%23%27 xmlns:dc=%27http://purl.org/dc/elements/1.1/%27%3E%3Cdefs id=%27defs324%27 /%3E%3Csodipodi:namedview id=%27namedview322%27 pagecolor=%27%23ffffff%27 bordercolor=%27%23000000%27 borderopacity=%270.25%27 inkscape:showpageshadow=%272%27 inkscape:pageopacity=%270.0%27 inkscape:pagecheckerboard=%270%27 inkscape:deskcolor=%27%23d1d1d1%27 showgrid=%27false%27 inkscape:zoom=%273.8064516%27 inkscape:cx=%2791.423729%27 inkscape:cy=%27-1.4449153%27 inkscape:window-width=%271440%27 inkscape:window-height=%27847%27 inkscape:window-x=%2732%27 inkscape:window-y=%2725%27 inkscape:window-maximized=%270%27 inkscape:current-layer=%27svg320%27 /%3E%3Ctitle id=%27title312%27%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z%27 fill=%27%23fff%27 id=%27path314%27 style=%27fill:%23ffffff%27 /%3E%3Cg id=%27g356%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g358%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g360%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g362%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g364%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g366%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g368%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g370%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g372%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g374%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g376%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g378%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g380%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g382%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g384%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cmetadata id=%27metadata561%27%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=%27%27%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d=%27m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4%27 id=%27path596%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4%27 id=%27path598%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4%27 id=%27path600%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616%27 id=%27path602%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3C/svg%3E"), __webpack_require__.b);
+var ___CSS_LOADER_URL_IMPORT_3___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E"), __webpack_require__.b);
+var ___CSS_LOADER_URL_IMPORT_4___ = new URL(/* asset import */ __webpack_require__(/*! data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E */ "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E"), __webpack_require__.b);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 var ___CSS_LOADER_URL_REPLACEMENT_0___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_0___);
 var ___CSS_LOADER_URL_REPLACEMENT_1___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_1___);
 var ___CSS_LOADER_URL_REPLACEMENT_2___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_2___);
 var ___CSS_LOADER_URL_REPLACEMENT_3___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_3___);
+var ___CSS_LOADER_URL_REPLACEMENT_4___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_4___);
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, "/* .a-fullscreen means not embedded. */\nhtml.a-fullscreen {\n  bottom: 0;\n  left: 0;\n  position: fixed;\n  right: 0;\n  top: 0;\n}\n\nhtml.a-fullscreen body {\n  height: 100%;\n  margin: 0;\n  overflow: hidden;\n  padding: 0;\n  width: 100%;\n}\n\n/* Class is removed when doing <a-scene embedded>. */\nhtml.a-fullscreen .a-canvas {\n  width: 100% !important;\n  height: 100% !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  position: fixed !important;\n}\n\nhtml:not(.a-fullscreen) .a-enter-vr,\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 5px;\n  bottom: 5px;\n}\n\n/* In chrome mobile the user agent stylesheet set it to white  */\n:-webkit-full-screen {\n  background-color: transparent;\n}\n\n.a-hidden {\n  display: none !important;\n}\n\n.a-canvas {\n  height: 100%;\n  left: 0;\n  position: absolute;\n  top: 0;\n  width: 100%;\n}\n\n.a-canvas.a-grab-cursor:hover {\n  cursor: grab;\n  cursor: -moz-grab;\n  cursor: -webkit-grab;\n}\n\ncanvas.a-canvas.a-mouse-cursor-hover:hover {\n  cursor: pointer;\n}\n\n.a-inspector-loader {\n  background-color: #ed3160;\n  position: fixed;\n  left: 3px;\n  top: 3px;\n  padding: 6px 10px;\n  color: #fff;\n  text-decoration: none;\n  font-size: 12px;\n  font-family: Roboto,sans-serif;\n  text-align: center;\n  z-index: 99999;\n  width: 204px;\n}\n\n/* Inspector loader animation */\n@keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n@-webkit-keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@-webkit-keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@-webkit-keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n\n.a-inspector-loader .dots span {\n  animation: dots-1 2s infinite steps(1);\n  -webkit-animation: dots-1 2s infinite steps(1);\n}\n\n.a-inspector-loader .dots span:first-child + span {\n  animation-name: dots-2;\n  -webkit-animation-name: dots-2;\n}\n\n.a-inspector-loader .dots span:first-child + span + span {\n  animation-name: dots-3;\n  -webkit-animation-name: dots-3;\n}\n\na-scene {\n  display: block;\n  position: relative;\n  height: 100%;\n  width: 100%;\n}\n\na-assets,\na-scene video,\na-scene img,\na-scene audio {\n  display: none;\n}\n\n.a-enter-vr-modal,\n.a-orientation-modal {\n  font-family: Consolas, Andale Mono, Courier New, monospace;\n}\n\n.a-enter-vr-modal a {\n  border-bottom: 1px solid #fff;\n  padding: 2px 0;\n  text-decoration: none;\n  transition: .1s color ease-in;\n}\n\n.a-enter-vr-modal a:hover {\n  background-color: #fff;\n  color: #111;\n  padding: 2px 4px;\n  position: relative;\n  left: -4px;\n}\n\n.a-enter-vr,\n.a-enter-ar {\n  font-family: sans-serif, monospace;\n  font-size: 13px;\n  width: 100%;\n  font-weight: 200;\n  line-height: 16px;\n  position: absolute;\n  right: 20px;\n  bottom: 20px;\n}\n\n.a-enter-ar {\n  right: 80px;\n}\n\n.a-enter-vr-button,\n.a-enter-vr-modal,\n.a-enter-vr-modal a {\n  color: #fff;\n  user-select: none;\n  outline: none;\n}\n\n.a-enter-vr-button {\n  background: rgba(0, 0, 0, 0.35) url(" + ___CSS_LOADER_URL_REPLACEMENT_0___ + ") 50% 50% no-repeat;\n}\n\n.a-enter-ar-button {\n  background: rgba(0, 0, 0, 0.20) url(" + ___CSS_LOADER_URL_REPLACEMENT_1___ + ") 50% 50% no-repeat;\n}\n\n.a-enter-vr-button,\n.a-enter-ar-button {\n  background-size: 90% 90%;\n  border: 0;\n  bottom: 0;\n  cursor: pointer;\n  min-width: 58px;\n  min-height: 34px;\n  /* 1.74418604651 */\n  /*\n    In order to keep the aspect ratio when resizing\n    padding-top percentages are relative to the containing block's width.\n    http://stackoverflow.com/questions/12121090/responsively-change-div-size-keeping-aspect-ratio\n  */\n  padding-right: 0;\n  padding-top: 0;\n  position: absolute;\n  right: 0;\n  transition: background-color .05s ease;\n  -webkit-transition: background-color .05s ease;\n  z-index: 9999;\n  border-radius: 8px;\n  touch-action: manipulation; /* Prevent iOS double tap zoom on the button */\n}\n\n.a-enter-ar-button {\n  background-size: 100% 90%;\n  margin-right: 10px;\n  border-radius: 7px;\n}\n\n.a-enter-ar-button:active,\n.a-enter-ar-button:hover,\n.a-enter-vr-button:active,\n.a-enter-vr-button:hover {\n  background-color: #ef2d5e;\n}\n\n.a-enter-vr-button.resethover {\n  background-color: rgba(0, 0, 0, 0.35);\n}\n\n[data-a-enter-vr-no-webvr] .a-enter-vr-button {\n  border-color: #666;\n  opacity: 0.65;\n}\n\n[data-a-enter-vr-no-webvr] .a-enter-vr-button:active,\n[data-a-enter-vr-no-webvr] .a-enter-vr-button:hover {\n  background-color: rgba(0, 0, 0, .35);\n  cursor: not-allowed;\n}\n\n.a-enter-vr-modal {\n  background-color: #666;\n  border-radius: 0;\n  display: none;\n  min-height: 32px;\n  margin-right: 70px;\n  padding: 9px;\n  width: 280px;\n  right: 2%;\n  position: absolute;\n}\n\n.a-enter-vr-modal:after {\n  border-bottom: 10px solid transparent;\n  border-left: 10px solid #666;\n  border-top: 10px solid transparent;\n  display: inline-block;\n  content: '';\n  position: absolute;\n  right: -5px;\n  top: 5px;\n  width: 0;\n  height: 0;\n}\n\n.a-enter-vr-modal p,\n.a-enter-vr-modal a {\n  display: inline;\n}\n\n.a-enter-vr-modal p {\n  margin: 0;\n}\n\n.a-enter-vr-modal p:after {\n  content: ' ';\n}\n\n[data-a-enter-vr-no-webvr].a-enter-vr:hover .a-enter-vr-modal,\n[data-a-enter-vr-no-headset].a-enter-vr:hover .a-enter-vr-modal {\n  display: block;\n}\n\n.a-orientation-modal {\n  background: rgba(244, 244, 244, 1) url(" + ___CSS_LOADER_URL_REPLACEMENT_2___ + ") center no-repeat;\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-orientation-modal:after {\n  color: #666;\n  content: \"Insert phone into Cardboard holder.\";\n  display: block;\n  position: absolute;\n  text-align: center;\n  top: 70%;\n  transform: translateY(-70%);\n  width: 100%;\n}\n\n.a-orientation-modal button {\n  background: url(" + ___CSS_LOADER_URL_REPLACEMENT_3___ + ") no-repeat;\n  border: none;\n  height: 50px;\n  text-indent: -9999px;\n  width: 50px;\n}\n\n.a-loader-title {\n  background-color: rgba(0, 0, 0, 0.6);\n  font-family: sans-serif, monospace;\n  text-align: center;\n  font-size: 20px;\n  height: 50px;\n  font-weight: 300;\n  line-height: 50px;\n  position: absolute;\n  right: 0px;\n  left: 0px;\n  top: 0px;\n  color: white;\n}\n\n.a-modal {\n  position: absolute;\n  background: rgba(0, 0, 0, 0.60);\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-dialog {\n  position: relative;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 199995;\n  width: 300px;\n  height: 200px;\n  background-size: contain;\n  background-color: white;\n  font-family: sans-serif, monospace;\n  font-size: 20px;\n  border-radius: 3px;\n  padding: 6px;\n}\n\n.a-dialog-text-container {\n  width: 100%;\n  height: 70%;\n  align-self: flex-start;\n  display: flex;\n  justify-content: center;\n  align-content: center;\n  flex-direction: column;\n}\n\n.a-dialog-text {\n  display: inline-block;\n  font-weight: normal;\n  font-size: 14pt;\n  margin: 8px;\n}\n\n.a-dialog-buttons-container {\n  display: inline-flex;\n  align-self: flex-end;\n  width: 100%;\n  height: 30%;\n}\n\n.a-dialog-button {\n  cursor: pointer;\n  align-self: center;\n  opacity: 0.9;\n  height: 80%;\n  width: 50%;\n  font-size: 12pt;\n  margin: 4px;\n  border-radius: 2px;\n  text-align:center;\n  border: none;\n  display: inline-block;\n  -webkit-transition: all 0.25s ease-in-out;\n  transition: all 0.25s ease-in-out;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.20);\n  user-select: none;\n}\n\n.a-dialog-permission-button:hover {\n  box-shadow: 0 7px 14px rgba(0,0,0,0.20), 0 2px 2px rgba(0,0,0,0.20);\n}\n\n.a-dialog-allow-button {\n  background-color: #00ceff;\n}\n\n.a-dialog-deny-button {\n  background-color: #ff005b;\n}\n\n.a-dialog-ok-button {\n  background-color: #00ceff;\n  width: 100%;\n}\n\n.a-dom-overlay:not(.a-no-style) {\n  overflow: hidden;\n  position: absolute;\n  pointer-events: none;\n  box-sizing: border-box;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  top: 0;\n  padding: 1em;\n}\n\n.a-dom-overlay:not(.a-no-style)>* {\n  pointer-events: auto;\n}\n", "",{"version":3,"sources":["webpack://./src/style/aframe.css"],"names":[],"mappings":"AAAA,sCAAsC;AACtC;EACE,SAAS;EACT,OAAO;EACP,eAAe;EACf,QAAQ;EACR,MAAM;AACR;;AAEA;EACE,YAAY;EACZ,SAAS;EACT,gBAAgB;EAChB,UAAU;EACV,WAAW;AACb;;AAEA,oDAAoD;AACpD;EACE,sBAAsB;EACtB,uBAAuB;EACvB,iBAAiB;EACjB,kBAAkB;EAClB,mBAAmB;EACnB,oBAAoB;EACpB,0BAA0B;AAC5B;;AAEA;;EAEE,UAAU;EACV,WAAW;AACb;;AAEA,gEAAgE;AAChE;EACE,6BAA6B;AAC/B;;AAEA;EACE,wBAAwB;AAC1B;;AAEA;EACE,YAAY;EACZ,OAAO;EACP,kBAAkB;EAClB,MAAM;EACN,WAAW;AACb;;AAEA;EACE,YAAY;EACZ,iBAAiB;EACjB,oBAAoB;AACtB;;AAEA;EACE,eAAe;AACjB;;AAEA;EACE,yBAAyB;EACzB,eAAe;EACf,SAAS;EACT,QAAQ;EACR,iBAAiB;EACjB,WAAW;EACX,qBAAqB;EACrB,eAAe;EACf,8BAA8B;EAC9B,kBAAkB;EAClB,cAAc;EACd,YAAY;AACd;;AAEA,+BAA+B;AAC/B,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AACrE,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AACrE,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;;AAErE;EACE,sCAAsC;EACtC,8CAA8C;AAChD;;AAEA;EACE,sBAAsB;EACtB,8BAA8B;AAChC;;AAEA;EACE,sBAAsB;EACtB,8BAA8B;AAChC;;AAEA;EACE,cAAc;EACd,kBAAkB;EAClB,YAAY;EACZ,WAAW;AACb;;AAEA;;;;EAIE,aAAa;AACf;;AAEA;;EAEE,0DAA0D;AAC5D;;AAEA;EACE,6BAA6B;EAC7B,cAAc;EACd,qBAAqB;EACrB,6BAA6B;AAC/B;;AAEA;EACE,sBAAsB;EACtB,WAAW;EACX,gBAAgB;EAChB,kBAAkB;EAClB,UAAU;AACZ;;AAEA;;EAEE,kCAAkC;EAClC,eAAe;EACf,WAAW;EACX,gBAAgB;EAChB,iBAAiB;EACjB,kBAAkB;EAClB,WAAW;EACX,YAAY;AACd;;AAEA;EACE,WAAW;AACb;;AAEA;;;EAGE,WAAW;EACX,iBAAiB;EACjB,aAAa;AACf;;AAEA;EACE,yFAA4qB;AAC9qB;;AAEA;EACE,yFAAkzB;AACpzB;;AAEA;;EAEE,wBAAwB;EACxB,SAAS;EACT,SAAS;EACT,eAAe;EACf,eAAe;EACf,gBAAgB;EAChB,kBAAkB;EAClB;;;;GAIC;EACD,gBAAgB;EAChB,cAAc;EACd,kBAAkB;EAClB,QAAQ;EACR,sCAAsC;EACtC,8CAA8C;EAC9C,aAAa;EACb,kBAAkB;EAClB,0BAA0B,EAAE,8CAA8C;AAC5E;;AAEA;EACE,yBAAyB;EACzB,kBAAkB;EAClB,kBAAkB;AACpB;;AAEA;;;;EAIE,yBAAyB;AAC3B;;AAEA;EACE,qCAAqC;AACvC;;AAEA;EACE,kBAAkB;EAClB,aAAa;AACf;;AAEA;;EAEE,oCAAoC;EACpC,mBAAmB;AACrB;;AAEA;EACE,sBAAsB;EACtB,gBAAgB;EAChB,aAAa;EACb,gBAAgB;EAChB,kBAAkB;EAClB,YAAY;EACZ,YAAY;EACZ,SAAS;EACT,kBAAkB;AACpB;;AAEA;EACE,qCAAqC;EACrC,4BAA4B;EAC5B,kCAAkC;EAClC,qBAAqB;EACrB,WAAW;EACX,kBAAkB;EAClB,WAAW;EACX,QAAQ;EACR,QAAQ;EACR,SAAS;AACX;;AAEA;;EAEE,eAAe;AACjB;;AAEA;EACE,SAAS;AACX;;AAEA;EACE,YAAY;AACd;;AAEA;;EAEE,cAAc;AAChB;;AAEA;EACE,2FAAivF;EACjvF,wBAAwB;EACxB,SAAS;EACT,eAAe;EACf,gBAAgB;EAChB,OAAO;EACP,iBAAiB;EACjB,QAAQ;EACR,eAAe;EACf,MAAM;EACN,gBAAgB;AAClB;;AAEA;EACE,WAAW;EACX,8CAA8C;EAC9C,cAAc;EACd,kBAAkB;EAClB,kBAAkB;EAClB,QAAQ;EACR,2BAA2B;EAC3B,WAAW;AACb;;AAEA;EACE,6DAA25B;EAC35B,YAAY;EACZ,YAAY;EACZ,oBAAoB;EACpB,WAAW;AACb;;AAEA;EACE,oCAAoC;EACpC,kCAAkC;EAClC,kBAAkB;EAClB,eAAe;EACf,YAAY;EACZ,gBAAgB;EAChB,iBAAiB;EACjB,kBAAkB;EAClB,UAAU;EACV,SAAS;EACT,QAAQ;EACR,YAAY;AACd;;AAEA;EACE,kBAAkB;EAClB,+BAA+B;EAC/B,wBAAwB;EACxB,SAAS;EACT,eAAe;EACf,gBAAgB;EAChB,OAAO;EACP,iBAAiB;EACjB,QAAQ;EACR,eAAe;EACf,MAAM;EACN,gBAAgB;AAClB;;AAEA;EACE,kBAAkB;EAClB,SAAS;EACT,QAAQ;EACR,gCAAgC;EAChC,eAAe;EACf,YAAY;EACZ,aAAa;EACb,wBAAwB;EACxB,uBAAuB;EACvB,kCAAkC;EAClC,eAAe;EACf,kBAAkB;EAClB,YAAY;AACd;;AAEA;EACE,WAAW;EACX,WAAW;EACX,sBAAsB;EACtB,aAAa;EACb,uBAAuB;EACvB,qBAAqB;EACrB,sBAAsB;AACxB;;AAEA;EACE,qBAAqB;EACrB,mBAAmB;EACnB,eAAe;EACf,WAAW;AACb;;AAEA;EACE,oBAAoB;EACpB,oBAAoB;EACpB,WAAW;EACX,WAAW;AACb;;AAEA;EACE,eAAe;EACf,kBAAkB;EAClB,YAAY;EACZ,WAAW;EACX,UAAU;EACV,eAAe;EACf,WAAW;EACX,kBAAkB;EAClB,iBAAiB;EACjB,YAAY;EACZ,qBAAqB;EACrB,yCAAyC;EACzC,iCAAiC;EACjC,wEAAwE;EACxE,iBAAiB;AACnB;;AAEA;EACE,mEAAmE;AACrE;;AAEA;EACE,yBAAyB;AAC3B;;AAEA;EACE,yBAAyB;AAC3B;;AAEA;EACE,yBAAyB;EACzB,WAAW;AACb;;AAEA;EACE,gBAAgB;EAChB,kBAAkB;EAClB,oBAAoB;EACpB,sBAAsB;EACtB,SAAS;EACT,OAAO;EACP,QAAQ;EACR,MAAM;EACN,YAAY;AACd;;AAEA;EACE,oBAAoB;AACtB","sourcesContent":["/* .a-fullscreen means not embedded. */\nhtml.a-fullscreen {\n  bottom: 0;\n  left: 0;\n  position: fixed;\n  right: 0;\n  top: 0;\n}\n\nhtml.a-fullscreen body {\n  height: 100%;\n  margin: 0;\n  overflow: hidden;\n  padding: 0;\n  width: 100%;\n}\n\n/* Class is removed when doing <a-scene embedded>. */\nhtml.a-fullscreen .a-canvas {\n  width: 100% !important;\n  height: 100% !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  position: fixed !important;\n}\n\nhtml:not(.a-fullscreen) .a-enter-vr,\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 5px;\n  bottom: 5px;\n}\n\n/* In chrome mobile the user agent stylesheet set it to white  */\n:-webkit-full-screen {\n  background-color: transparent;\n}\n\n.a-hidden {\n  display: none !important;\n}\n\n.a-canvas {\n  height: 100%;\n  left: 0;\n  position: absolute;\n  top: 0;\n  width: 100%;\n}\n\n.a-canvas.a-grab-cursor:hover {\n  cursor: grab;\n  cursor: -moz-grab;\n  cursor: -webkit-grab;\n}\n\ncanvas.a-canvas.a-mouse-cursor-hover:hover {\n  cursor: pointer;\n}\n\n.a-inspector-loader {\n  background-color: #ed3160;\n  position: fixed;\n  left: 3px;\n  top: 3px;\n  padding: 6px 10px;\n  color: #fff;\n  text-decoration: none;\n  font-size: 12px;\n  font-family: Roboto,sans-serif;\n  text-align: center;\n  z-index: 99999;\n  width: 204px;\n}\n\n/* Inspector loader animation */\n@keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n@-webkit-keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@-webkit-keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@-webkit-keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n\n.a-inspector-loader .dots span {\n  animation: dots-1 2s infinite steps(1);\n  -webkit-animation: dots-1 2s infinite steps(1);\n}\n\n.a-inspector-loader .dots span:first-child + span {\n  animation-name: dots-2;\n  -webkit-animation-name: dots-2;\n}\n\n.a-inspector-loader .dots span:first-child + span + span {\n  animation-name: dots-3;\n  -webkit-animation-name: dots-3;\n}\n\na-scene {\n  display: block;\n  position: relative;\n  height: 100%;\n  width: 100%;\n}\n\na-assets,\na-scene video,\na-scene img,\na-scene audio {\n  display: none;\n}\n\n.a-enter-vr-modal,\n.a-orientation-modal {\n  font-family: Consolas, Andale Mono, Courier New, monospace;\n}\n\n.a-enter-vr-modal a {\n  border-bottom: 1px solid #fff;\n  padding: 2px 0;\n  text-decoration: none;\n  transition: .1s color ease-in;\n}\n\n.a-enter-vr-modal a:hover {\n  background-color: #fff;\n  color: #111;\n  padding: 2px 4px;\n  position: relative;\n  left: -4px;\n}\n\n.a-enter-vr,\n.a-enter-ar {\n  font-family: sans-serif, monospace;\n  font-size: 13px;\n  width: 100%;\n  font-weight: 200;\n  line-height: 16px;\n  position: absolute;\n  right: 20px;\n  bottom: 20px;\n}\n\n.a-enter-ar {\n  right: 80px;\n}\n\n.a-enter-vr-button,\n.a-enter-vr-modal,\n.a-enter-vr-modal a {\n  color: #fff;\n  user-select: none;\n  outline: none;\n}\n\n.a-enter-vr-button {\n  background: rgba(0, 0, 0, 0.35) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z' fill='%23fff'/%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat;\n}\n\n.a-enter-ar-button {\n  background: rgba(0, 0, 0, 0.20) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z' fill='%23fff'/%3E%3Cpath d='M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z' fill='%23fff'/%3E%3Cpath d='M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat;\n}\n\n.a-enter-vr-button,\n.a-enter-ar-button {\n  background-size: 90% 90%;\n  border: 0;\n  bottom: 0;\n  cursor: pointer;\n  min-width: 58px;\n  min-height: 34px;\n  /* 1.74418604651 */\n  /*\n    In order to keep the aspect ratio when resizing\n    padding-top percentages are relative to the containing block's width.\n    http://stackoverflow.com/questions/12121090/responsively-change-div-size-keeping-aspect-ratio\n  */\n  padding-right: 0;\n  padding-top: 0;\n  position: absolute;\n  right: 0;\n  transition: background-color .05s ease;\n  -webkit-transition: background-color .05s ease;\n  z-index: 9999;\n  border-radius: 8px;\n  touch-action: manipulation; /* Prevent iOS double tap zoom on the button */\n}\n\n.a-enter-ar-button {\n  background-size: 100% 90%;\n  margin-right: 10px;\n  border-radius: 7px;\n}\n\n.a-enter-ar-button:active,\n.a-enter-ar-button:hover,\n.a-enter-vr-button:active,\n.a-enter-vr-button:hover {\n  background-color: #ef2d5e;\n}\n\n.a-enter-vr-button.resethover {\n  background-color: rgba(0, 0, 0, 0.35);\n}\n\n[data-a-enter-vr-no-webvr] .a-enter-vr-button {\n  border-color: #666;\n  opacity: 0.65;\n}\n\n[data-a-enter-vr-no-webvr] .a-enter-vr-button:active,\n[data-a-enter-vr-no-webvr] .a-enter-vr-button:hover {\n  background-color: rgba(0, 0, 0, .35);\n  cursor: not-allowed;\n}\n\n.a-enter-vr-modal {\n  background-color: #666;\n  border-radius: 0;\n  display: none;\n  min-height: 32px;\n  margin-right: 70px;\n  padding: 9px;\n  width: 280px;\n  right: 2%;\n  position: absolute;\n}\n\n.a-enter-vr-modal:after {\n  border-bottom: 10px solid transparent;\n  border-left: 10px solid #666;\n  border-top: 10px solid transparent;\n  display: inline-block;\n  content: '';\n  position: absolute;\n  right: -5px;\n  top: 5px;\n  width: 0;\n  height: 0;\n}\n\n.a-enter-vr-modal p,\n.a-enter-vr-modal a {\n  display: inline;\n}\n\n.a-enter-vr-modal p {\n  margin: 0;\n}\n\n.a-enter-vr-modal p:after {\n  content: ' ';\n}\n\n[data-a-enter-vr-no-webvr].a-enter-vr:hover .a-enter-vr-modal,\n[data-a-enter-vr-no-headset].a-enter-vr:hover .a-enter-vr-modal {\n  display: block;\n}\n\n.a-orientation-modal {\n  background: rgba(244, 244, 244, 1) url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E) center no-repeat;\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-orientation-modal:after {\n  color: #666;\n  content: \"Insert phone into Cardboard holder.\";\n  display: block;\n  position: absolute;\n  text-align: center;\n  top: 70%;\n  transform: translateY(-70%);\n  width: 100%;\n}\n\n.a-orientation-modal button {\n  background: url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E) no-repeat;\n  border: none;\n  height: 50px;\n  text-indent: -9999px;\n  width: 50px;\n}\n\n.a-loader-title {\n  background-color: rgba(0, 0, 0, 0.6);\n  font-family: sans-serif, monospace;\n  text-align: center;\n  font-size: 20px;\n  height: 50px;\n  font-weight: 300;\n  line-height: 50px;\n  position: absolute;\n  right: 0px;\n  left: 0px;\n  top: 0px;\n  color: white;\n}\n\n.a-modal {\n  position: absolute;\n  background: rgba(0, 0, 0, 0.60);\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-dialog {\n  position: relative;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 199995;\n  width: 300px;\n  height: 200px;\n  background-size: contain;\n  background-color: white;\n  font-family: sans-serif, monospace;\n  font-size: 20px;\n  border-radius: 3px;\n  padding: 6px;\n}\n\n.a-dialog-text-container {\n  width: 100%;\n  height: 70%;\n  align-self: flex-start;\n  display: flex;\n  justify-content: center;\n  align-content: center;\n  flex-direction: column;\n}\n\n.a-dialog-text {\n  display: inline-block;\n  font-weight: normal;\n  font-size: 14pt;\n  margin: 8px;\n}\n\n.a-dialog-buttons-container {\n  display: inline-flex;\n  align-self: flex-end;\n  width: 100%;\n  height: 30%;\n}\n\n.a-dialog-button {\n  cursor: pointer;\n  align-self: center;\n  opacity: 0.9;\n  height: 80%;\n  width: 50%;\n  font-size: 12pt;\n  margin: 4px;\n  border-radius: 2px;\n  text-align:center;\n  border: none;\n  display: inline-block;\n  -webkit-transition: all 0.25s ease-in-out;\n  transition: all 0.25s ease-in-out;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.20);\n  user-select: none;\n}\n\n.a-dialog-permission-button:hover {\n  box-shadow: 0 7px 14px rgba(0,0,0,0.20), 0 2px 2px rgba(0,0,0,0.20);\n}\n\n.a-dialog-allow-button {\n  background-color: #00ceff;\n}\n\n.a-dialog-deny-button {\n  background-color: #ff005b;\n}\n\n.a-dialog-ok-button {\n  background-color: #00ceff;\n  width: 100%;\n}\n\n.a-dom-overlay:not(.a-no-style) {\n  overflow: hidden;\n  position: absolute;\n  pointer-events: none;\n  box-sizing: border-box;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  top: 0;\n  padding: 1em;\n}\n\n.a-dom-overlay:not(.a-no-style)>* {\n  pointer-events: auto;\n}\n"],"sourceRoot":""}]);
+___CSS_LOADER_EXPORT___.push([module.id, "/* .a-fullscreen means not embedded. */\nhtml.a-fullscreen {\n  bottom: 0;\n  left: 0;\n  position: fixed;\n  right: 0;\n  top: 0;\n}\n\nhtml.a-fullscreen body {\n  height: 100%;\n  margin: 0;\n  overflow: hidden;\n  padding: 0;\n  width: 100%;\n}\n\n/* Class is removed when doing <a-scene embedded>. */\nhtml.a-fullscreen .a-canvas {\n  width: 100% !important;\n  height: 100% !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  position: fixed !important;\n}\n\nhtml:not(.a-fullscreen) .a-enter-vr,\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 5px;\n  bottom: 5px;\n}\n\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 60px;\n}\n\n/* In chrome mobile the user agent stylesheet set it to white  */\n:-webkit-full-screen {\n  background-color: transparent;\n}\n\n.a-hidden {\n  display: none !important;\n}\n\n.a-canvas {\n  height: 100%;\n  left: 0;\n  position: absolute;\n  top: 0;\n  width: 100%;\n}\n\n.a-canvas.a-grab-cursor:hover {\n  cursor: grab;\n  cursor: -moz-grab;\n  cursor: -webkit-grab;\n}\n\ncanvas.a-canvas.a-mouse-cursor-hover:hover {\n  cursor: pointer;\n}\n\n.a-inspector-loader {\n  background-color: #ed3160;\n  position: fixed;\n  left: 3px;\n  top: 3px;\n  padding: 6px 10px;\n  color: #fff;\n  text-decoration: none;\n  font-size: 12px;\n  font-family: Roboto,sans-serif;\n  text-align: center;\n  z-index: 99999;\n  width: 204px;\n}\n\n/* Inspector loader animation */\n@keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n@-webkit-keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@-webkit-keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@-webkit-keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n\n.a-inspector-loader .dots span {\n  animation: dots-1 2s infinite steps(1);\n  -webkit-animation: dots-1 2s infinite steps(1);\n}\n\n.a-inspector-loader .dots span:first-child + span {\n  animation-name: dots-2;\n  -webkit-animation-name: dots-2;\n}\n\n.a-inspector-loader .dots span:first-child + span + span {\n  animation-name: dots-3;\n  -webkit-animation-name: dots-3;\n}\n\na-scene {\n  display: block;\n  position: relative;\n  height: 100%;\n  width: 100%;\n}\n\na-assets,\na-scene video,\na-scene img,\na-scene audio {\n  display: none;\n}\n\n.a-enter-vr-modal,\n.a-orientation-modal {\n  font-family: Consolas, Andale Mono, Courier New, monospace;\n}\n\n.a-enter-vr-modal a {\n  border-bottom: 1px solid #fff;\n  padding: 2px 0;\n  text-decoration: none;\n  transition: .1s color ease-in;\n}\n\n.a-enter-vr-modal a:hover {\n  background-color: #fff;\n  color: #111;\n  padding: 2px 4px;\n  position: relative;\n  left: -4px;\n}\n\n.a-enter-vr,\n.a-enter-ar {\n  font-family: sans-serif, monospace;\n  font-size: 13px;\n  width: 100%;\n  font-weight: 200;\n  line-height: 16px;\n  position: absolute;\n  right: 20px;\n  bottom: 20px;\n}\n\n.a-enter-ar {\n  right: 80px;\n}\n\n.a-enter-vr-button,\n.a-enter-vr-modal,\n.a-enter-vr-modal a {\n  color: #fff;\n  user-select: none;\n  outline: none;\n}\n\n.a-enter-vr-button {\n  background: rgba(0, 0, 0, 0.35) url(" + ___CSS_LOADER_URL_REPLACEMENT_0___ + ") 50% 50% no-repeat;\n}\n\n.a-enter-ar-button {\n  background: rgba(0, 0, 0, 0.20) url(" + ___CSS_LOADER_URL_REPLACEMENT_1___ + ") 50% 50% no-repeat;\n}\n\n.a-enter-vr.fullscreen .a-enter-vr-button {\n  background-image: url(" + ___CSS_LOADER_URL_REPLACEMENT_2___ + ");\n}\n\n.a-enter-vr-button,\n.a-enter-ar-button {\n  background-size: 90% 90%;\n  border: 0;\n  bottom: 0;\n  cursor: pointer;\n  min-width: 58px;\n  min-height: 34px;\n  /* 1.74418604651 */\n  /*\n    In order to keep the aspect ratio when resizing\n    padding-top percentages are relative to the containing block's width.\n    http://stackoverflow.com/questions/12121090/responsively-change-div-size-keeping-aspect-ratio\n  */\n  padding-right: 0;\n  padding-top: 0;\n  position: absolute;\n  right: 0;\n  transition: background-color .05s ease;\n  -webkit-transition: background-color .05s ease;\n  z-index: 9999;\n  border-radius: 8px;\n  touch-action: manipulation; /* Prevent iOS double tap zoom on the button */\n}\n\n.a-enter-ar-button {\n  background-size: 100% 90%;\n  margin-right: 10px;\n  border-radius: 7px;\n}\n\n.a-enter-ar-button:active,\n.a-enter-ar-button:hover,\n.a-enter-vr-button:active,\n.a-enter-vr-button:hover {\n  background-color: #ef2d5e;\n}\n\n.a-enter-vr-button.resethover {\n  background-color: rgba(0, 0, 0, 0.35);\n}\n\n\n.a-enter-vr-modal {\n  background-color: #666;\n  border-radius: 0;\n  display: none;\n  min-height: 32px;\n  margin-right: 70px;\n  padding: 9px;\n  width: 280px;\n  right: 2%;\n  position: absolute;\n}\n\n.a-enter-vr-modal:after {\n  border-bottom: 10px solid transparent;\n  border-left: 10px solid #666;\n  border-top: 10px solid transparent;\n  display: inline-block;\n  content: '';\n  position: absolute;\n  right: -5px;\n  top: 5px;\n  width: 0;\n  height: 0;\n}\n\n.a-enter-vr-modal p,\n.a-enter-vr-modal a {\n  display: inline;\n}\n\n.a-enter-vr-modal p {\n  margin: 0;\n}\n\n.a-enter-vr-modal p:after {\n  content: ' ';\n}\n\n.a-orientation-modal {\n  background: rgba(244, 244, 244, 1) url(" + ___CSS_LOADER_URL_REPLACEMENT_3___ + ") center no-repeat;\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-orientation-modal:after {\n  color: #666;\n  content: \"Insert phone into Cardboard holder.\";\n  display: block;\n  position: absolute;\n  text-align: center;\n  top: 70%;\n  transform: translateY(-70%);\n  width: 100%;\n}\n\n.a-orientation-modal button {\n  background: url(" + ___CSS_LOADER_URL_REPLACEMENT_4___ + ") no-repeat;\n  border: none;\n  height: 50px;\n  text-indent: -9999px;\n  width: 50px;\n}\n\n.a-loader-title {\n  background-color: rgba(0, 0, 0, 0.6);\n  font-family: sans-serif, monospace;\n  text-align: center;\n  font-size: 20px;\n  height: 50px;\n  font-weight: 300;\n  line-height: 50px;\n  position: absolute;\n  right: 0px;\n  left: 0px;\n  top: 0px;\n  color: white;\n}\n\n.a-modal {\n  position: absolute;\n  background: rgba(0, 0, 0, 0.60);\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-dialog {\n  position: relative;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 199995;\n  width: 300px;\n  height: 200px;\n  background-size: contain;\n  background-color: white;\n  font-family: sans-serif, monospace;\n  font-size: 20px;\n  border-radius: 3px;\n  padding: 6px;\n}\n\n.a-dialog-text-container {\n  width: 100%;\n  height: 70%;\n  align-self: flex-start;\n  display: flex;\n  justify-content: center;\n  align-content: center;\n  flex-direction: column;\n}\n\n.a-dialog-text {\n  display: inline-block;\n  font-weight: normal;\n  font-size: 14pt;\n  margin: 8px;\n}\n\n.a-dialog-buttons-container {\n  display: inline-flex;\n  align-self: flex-end;\n  width: 100%;\n  height: 30%;\n}\n\n.a-dialog-button {\n  cursor: pointer;\n  align-self: center;\n  opacity: 0.9;\n  height: 80%;\n  width: 50%;\n  font-size: 12pt;\n  margin: 4px;\n  border-radius: 2px;\n  text-align:center;\n  border: none;\n  display: inline-block;\n  -webkit-transition: all 0.25s ease-in-out;\n  transition: all 0.25s ease-in-out;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.20);\n  user-select: none;\n}\n\n.a-dialog-permission-button:hover {\n  box-shadow: 0 7px 14px rgba(0,0,0,0.20), 0 2px 2px rgba(0,0,0,0.20);\n}\n\n.a-dialog-allow-button {\n  background-color: #00ceff;\n}\n\n.a-dialog-deny-button {\n  background-color: #ff005b;\n}\n\n.a-dialog-ok-button {\n  background-color: #00ceff;\n  width: 100%;\n}\n\n.a-dom-overlay:not(.a-no-style) {\n  overflow: hidden;\n  position: absolute;\n  pointer-events: none;\n  box-sizing: border-box;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  top: 0;\n  padding: 1em;\n}\n\n.a-dom-overlay:not(.a-no-style)>* {\n  pointer-events: auto;\n}\n", "",{"version":3,"sources":["webpack://./src/style/aframe.css"],"names":[],"mappings":"AAAA,sCAAsC;AACtC;EACE,SAAS;EACT,OAAO;EACP,eAAe;EACf,QAAQ;EACR,MAAM;AACR;;AAEA;EACE,YAAY;EACZ,SAAS;EACT,gBAAgB;EAChB,UAAU;EACV,WAAW;AACb;;AAEA,oDAAoD;AACpD;EACE,sBAAsB;EACtB,uBAAuB;EACvB,iBAAiB;EACjB,kBAAkB;EAClB,mBAAmB;EACnB,oBAAoB;EACpB,0BAA0B;AAC5B;;AAEA;;EAEE,UAAU;EACV,WAAW;AACb;;AAEA;EACE,WAAW;AACb;;AAEA,gEAAgE;AAChE;EACE,6BAA6B;AAC/B;;AAEA;EACE,wBAAwB;AAC1B;;AAEA;EACE,YAAY;EACZ,OAAO;EACP,kBAAkB;EAClB,MAAM;EACN,WAAW;AACb;;AAEA;EACE,YAAY;EACZ,iBAAiB;EACjB,oBAAoB;AACtB;;AAEA;EACE,eAAe;AACjB;;AAEA;EACE,yBAAyB;EACzB,eAAe;EACf,SAAS;EACT,QAAQ;EACR,iBAAiB;EACjB,WAAW;EACX,qBAAqB;EACrB,eAAe;EACf,8BAA8B;EAC9B,kBAAkB;EAClB,cAAc;EACd,YAAY;AACd;;AAEA,+BAA+B;AAC/B,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,oBAAoB,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AAC7D,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AACrE,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;AACrE,4BAA4B,OAAO,UAAU,EAAE,EAAE,MAAM,UAAU,EAAE,EAAE;;AAErE;EACE,sCAAsC;EACtC,8CAA8C;AAChD;;AAEA;EACE,sBAAsB;EACtB,8BAA8B;AAChC;;AAEA;EACE,sBAAsB;EACtB,8BAA8B;AAChC;;AAEA;EACE,cAAc;EACd,kBAAkB;EAClB,YAAY;EACZ,WAAW;AACb;;AAEA;;;;EAIE,aAAa;AACf;;AAEA;;EAEE,0DAA0D;AAC5D;;AAEA;EACE,6BAA6B;EAC7B,cAAc;EACd,qBAAqB;EACrB,6BAA6B;AAC/B;;AAEA;EACE,sBAAsB;EACtB,WAAW;EACX,gBAAgB;EAChB,kBAAkB;EAClB,UAAU;AACZ;;AAEA;;EAEE,kCAAkC;EAClC,eAAe;EACf,WAAW;EACX,gBAAgB;EAChB,iBAAiB;EACjB,kBAAkB;EAClB,WAAW;EACX,YAAY;AACd;;AAEA;EACE,WAAW;AACb;;AAEA;;;EAGE,WAAW;EACX,iBAAiB;EACjB,aAAa;AACf;;AAEA;EACE,yFAA4qB;AAC9qB;;AAEA;EACE,yFAAkzB;AACpzB;;AAEA;EACE,yDAA2qK;AAC7qK;;AAEA;;EAEE,wBAAwB;EACxB,SAAS;EACT,SAAS;EACT,eAAe;EACf,eAAe;EACf,gBAAgB;EAChB,kBAAkB;EAClB;;;;GAIC;EACD,gBAAgB;EAChB,cAAc;EACd,kBAAkB;EAClB,QAAQ;EACR,sCAAsC;EACtC,8CAA8C;EAC9C,aAAa;EACb,kBAAkB;EAClB,0BAA0B,EAAE,8CAA8C;AAC5E;;AAEA;EACE,yBAAyB;EACzB,kBAAkB;EAClB,kBAAkB;AACpB;;AAEA;;;;EAIE,yBAAyB;AAC3B;;AAEA;EACE,qCAAqC;AACvC;;;AAGA;EACE,sBAAsB;EACtB,gBAAgB;EAChB,aAAa;EACb,gBAAgB;EAChB,kBAAkB;EAClB,YAAY;EACZ,YAAY;EACZ,SAAS;EACT,kBAAkB;AACpB;;AAEA;EACE,qCAAqC;EACrC,4BAA4B;EAC5B,kCAAkC;EAClC,qBAAqB;EACrB,WAAW;EACX,kBAAkB;EAClB,WAAW;EACX,QAAQ;EACR,QAAQ;EACR,SAAS;AACX;;AAEA;;EAEE,eAAe;AACjB;;AAEA;EACE,SAAS;AACX;;AAEA;EACE,YAAY;AACd;;AAEA;EACE,2FAAivF;EACjvF,wBAAwB;EACxB,SAAS;EACT,eAAe;EACf,gBAAgB;EAChB,OAAO;EACP,iBAAiB;EACjB,QAAQ;EACR,eAAe;EACf,MAAM;EACN,gBAAgB;AAClB;;AAEA;EACE,WAAW;EACX,8CAA8C;EAC9C,cAAc;EACd,kBAAkB;EAClB,kBAAkB;EAClB,QAAQ;EACR,2BAA2B;EAC3B,WAAW;AACb;;AAEA;EACE,6DAA25B;EAC35B,YAAY;EACZ,YAAY;EACZ,oBAAoB;EACpB,WAAW;AACb;;AAEA;EACE,oCAAoC;EACpC,kCAAkC;EAClC,kBAAkB;EAClB,eAAe;EACf,YAAY;EACZ,gBAAgB;EAChB,iBAAiB;EACjB,kBAAkB;EAClB,UAAU;EACV,SAAS;EACT,QAAQ;EACR,YAAY;AACd;;AAEA;EACE,kBAAkB;EAClB,+BAA+B;EAC/B,wBAAwB;EACxB,SAAS;EACT,eAAe;EACf,gBAAgB;EAChB,OAAO;EACP,iBAAiB;EACjB,QAAQ;EACR,eAAe;EACf,MAAM;EACN,gBAAgB;AAClB;;AAEA;EACE,kBAAkB;EAClB,SAAS;EACT,QAAQ;EACR,gCAAgC;EAChC,eAAe;EACf,YAAY;EACZ,aAAa;EACb,wBAAwB;EACxB,uBAAuB;EACvB,kCAAkC;EAClC,eAAe;EACf,kBAAkB;EAClB,YAAY;AACd;;AAEA;EACE,WAAW;EACX,WAAW;EACX,sBAAsB;EACtB,aAAa;EACb,uBAAuB;EACvB,qBAAqB;EACrB,sBAAsB;AACxB;;AAEA;EACE,qBAAqB;EACrB,mBAAmB;EACnB,eAAe;EACf,WAAW;AACb;;AAEA;EACE,oBAAoB;EACpB,oBAAoB;EACpB,WAAW;EACX,WAAW;AACb;;AAEA;EACE,eAAe;EACf,kBAAkB;EAClB,YAAY;EACZ,WAAW;EACX,UAAU;EACV,eAAe;EACf,WAAW;EACX,kBAAkB;EAClB,iBAAiB;EACjB,YAAY;EACZ,qBAAqB;EACrB,yCAAyC;EACzC,iCAAiC;EACjC,wEAAwE;EACxE,iBAAiB;AACnB;;AAEA;EACE,mEAAmE;AACrE;;AAEA;EACE,yBAAyB;AAC3B;;AAEA;EACE,yBAAyB;AAC3B;;AAEA;EACE,yBAAyB;EACzB,WAAW;AACb;;AAEA;EACE,gBAAgB;EAChB,kBAAkB;EAClB,oBAAoB;EACpB,sBAAsB;EACtB,SAAS;EACT,OAAO;EACP,QAAQ;EACR,MAAM;EACN,YAAY;AACd;;AAEA;EACE,oBAAoB;AACtB","sourcesContent":["/* .a-fullscreen means not embedded. */\nhtml.a-fullscreen {\n  bottom: 0;\n  left: 0;\n  position: fixed;\n  right: 0;\n  top: 0;\n}\n\nhtml.a-fullscreen body {\n  height: 100%;\n  margin: 0;\n  overflow: hidden;\n  padding: 0;\n  width: 100%;\n}\n\n/* Class is removed when doing <a-scene embedded>. */\nhtml.a-fullscreen .a-canvas {\n  width: 100% !important;\n  height: 100% !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  position: fixed !important;\n}\n\nhtml:not(.a-fullscreen) .a-enter-vr,\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 5px;\n  bottom: 5px;\n}\n\nhtml:not(.a-fullscreen) .a-enter-ar {\n  right: 60px;\n}\n\n/* In chrome mobile the user agent stylesheet set it to white  */\n:-webkit-full-screen {\n  background-color: transparent;\n}\n\n.a-hidden {\n  display: none !important;\n}\n\n.a-canvas {\n  height: 100%;\n  left: 0;\n  position: absolute;\n  top: 0;\n  width: 100%;\n}\n\n.a-canvas.a-grab-cursor:hover {\n  cursor: grab;\n  cursor: -moz-grab;\n  cursor: -webkit-grab;\n}\n\ncanvas.a-canvas.a-mouse-cursor-hover:hover {\n  cursor: pointer;\n}\n\n.a-inspector-loader {\n  background-color: #ed3160;\n  position: fixed;\n  left: 3px;\n  top: 3px;\n  padding: 6px 10px;\n  color: #fff;\n  text-decoration: none;\n  font-size: 12px;\n  font-family: Roboto,sans-serif;\n  text-align: center;\n  z-index: 99999;\n  width: 204px;\n}\n\n/* Inspector loader animation */\n@keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n@-webkit-keyframes dots-1 { from { opacity: 0; } 25% { opacity: 1; } }\n@-webkit-keyframes dots-2 { from { opacity: 0; } 50% { opacity: 1; } }\n@-webkit-keyframes dots-3 { from { opacity: 0; } 75% { opacity: 1; } }\n\n.a-inspector-loader .dots span {\n  animation: dots-1 2s infinite steps(1);\n  -webkit-animation: dots-1 2s infinite steps(1);\n}\n\n.a-inspector-loader .dots span:first-child + span {\n  animation-name: dots-2;\n  -webkit-animation-name: dots-2;\n}\n\n.a-inspector-loader .dots span:first-child + span + span {\n  animation-name: dots-3;\n  -webkit-animation-name: dots-3;\n}\n\na-scene {\n  display: block;\n  position: relative;\n  height: 100%;\n  width: 100%;\n}\n\na-assets,\na-scene video,\na-scene img,\na-scene audio {\n  display: none;\n}\n\n.a-enter-vr-modal,\n.a-orientation-modal {\n  font-family: Consolas, Andale Mono, Courier New, monospace;\n}\n\n.a-enter-vr-modal a {\n  border-bottom: 1px solid #fff;\n  padding: 2px 0;\n  text-decoration: none;\n  transition: .1s color ease-in;\n}\n\n.a-enter-vr-modal a:hover {\n  background-color: #fff;\n  color: #111;\n  padding: 2px 4px;\n  position: relative;\n  left: -4px;\n}\n\n.a-enter-vr,\n.a-enter-ar {\n  font-family: sans-serif, monospace;\n  font-size: 13px;\n  width: 100%;\n  font-weight: 200;\n  line-height: 16px;\n  position: absolute;\n  right: 20px;\n  bottom: 20px;\n}\n\n.a-enter-ar {\n  right: 80px;\n}\n\n.a-enter-vr-button,\n.a-enter-vr-modal,\n.a-enter-vr-modal a {\n  color: #fff;\n  user-select: none;\n  outline: none;\n}\n\n.a-enter-vr-button {\n  background: rgba(0, 0, 0, 0.35) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-vrmode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M68.81,21.56H64.23v8.27h4.58a4.13,4.13,0,0,0,3.1-1.09,4.2,4.2,0,0,0,1-3,4.24,4.24,0,0,0-1-3A4.05,4.05,0,0,0,68.81,21.56Z' fill='%23fff'/%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0ZM41.9,46H34L24,16h8l6,21.84,6-21.84H52Zm39.29,0H73.44L68.15,35.39H64.23V46H57V16H68.81q5.32,0,8.34,2.37a8,8,0,0,1,3,6.69,9.68,9.68,0,0,1-1.27,5.18,8.9,8.9,0,0,1-4,3.34l6.26,12.11Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat;\n}\n\n.a-enter-ar-button {\n  background: rgba(0, 0, 0, 0.20) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='62' viewBox='0 0 108 62'%3E%3Ctitle%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M96,0H12A12,12,0,0,0,0,12V50A12,12,0,0,0,12,62H96a12,12,0,0,0,12-12V12A12,12,0,0,0,96,0Zm8,50a8,8,0,0,1-8,8H12a8,8,0,0,1-8-8V12a8,8,0,0,1,8-8H96a8,8,0,0,1,8,8Z' fill='%23fff'/%3E%3Cpath d='M43.35,39.82H32.51L30.45,46H23.88L35,16h5.73L52,46H45.43Zm-9.17-5h7.5L37.91,23.58Z' fill='%23fff'/%3E%3Cpath d='M68.11,35H63.18V46H57V16H68.15q5.31,0,8.2,2.37a8.18,8.18,0,0,1,2.88,6.7,9.22,9.22,0,0,1-1.33,5.12,9.09,9.09,0,0,1-4,3.26l6.49,12.26V46H73.73Zm-4.93-5h5a5.09,5.09,0,0,0,3.6-1.18,4.21,4.21,0,0,0,1.28-3.27,4.56,4.56,0,0,0-1.2-3.34A5,5,0,0,0,68.15,21h-5Z' fill='%23fff'/%3E%3C/svg%3E\") 50% 50% no-repeat;\n}\n\n.a-enter-vr.fullscreen .a-enter-vr-button {\n  background-image: url(\"data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8' standalone='no'%3F%3E%3Csvg width='108' height='62' viewBox='0 0 108 62' version='1.1' id='svg320' sodipodi:docname='fullscreen-aframe.svg' xml:space='preserve' inkscape:version='1.2.1 (9c6d41e  2022-07-14)' xmlns:inkscape='http://www.inkscape.org/namespaces/inkscape' xmlns:sodipodi='http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg' xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns%23' xmlns:cc='http://creativecommons.org/ns%23' xmlns:dc='http://purl.org/dc/elements/1.1/'%3E%3Cdefs id='defs324' /%3E%3Csodipodi:namedview id='namedview322' pagecolor='%23ffffff' bordercolor='%23000000' borderopacity='0.25' inkscape:showpageshadow='2' inkscape:pageopacity='0.0' inkscape:pagecheckerboard='0' inkscape:deskcolor='%23d1d1d1' showgrid='false' inkscape:zoom='3.8064516' inkscape:cx='91.423729' inkscape:cy='-1.4449153' inkscape:window-width='1440' inkscape:window-height='847' inkscape:window-x='32' inkscape:window-y='25' inkscape:window-maximized='0' inkscape:current-layer='svg320' /%3E%3Ctitle id='title312'%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d='M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z' fill='%23fff' id='path314' style='fill:%23ffffff' /%3E%3Cg id='g356' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g358' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g360' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g362' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g364' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g366' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g368' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g370' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g372' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g374' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g376' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g378' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g380' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g382' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cg id='g384' transform='translate(-206.61017 -232.61864)'%3E%3C/g%3E%3Cmetadata id='metadata561'%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=''%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d='m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4' id='path596' style='fill:%23ffffff%3Bstroke-width:1.50194' /%3E%3Cpath d='m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4' id='path598' style='fill:%23ffffff%3Bstroke-width:1.50194' /%3E%3Cpath d='m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4' id='path600' style='fill:%23ffffff%3Bstroke-width:1.50194' /%3E%3Cpath d='m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616' id='path602' style='fill:%23ffffff%3Bstroke-width:1.50194' /%3E%3C/svg%3E\");\n}\n\n.a-enter-vr-button,\n.a-enter-ar-button {\n  background-size: 90% 90%;\n  border: 0;\n  bottom: 0;\n  cursor: pointer;\n  min-width: 58px;\n  min-height: 34px;\n  /* 1.74418604651 */\n  /*\n    In order to keep the aspect ratio when resizing\n    padding-top percentages are relative to the containing block's width.\n    http://stackoverflow.com/questions/12121090/responsively-change-div-size-keeping-aspect-ratio\n  */\n  padding-right: 0;\n  padding-top: 0;\n  position: absolute;\n  right: 0;\n  transition: background-color .05s ease;\n  -webkit-transition: background-color .05s ease;\n  z-index: 9999;\n  border-radius: 8px;\n  touch-action: manipulation; /* Prevent iOS double tap zoom on the button */\n}\n\n.a-enter-ar-button {\n  background-size: 100% 90%;\n  margin-right: 10px;\n  border-radius: 7px;\n}\n\n.a-enter-ar-button:active,\n.a-enter-ar-button:hover,\n.a-enter-vr-button:active,\n.a-enter-vr-button:hover {\n  background-color: #ef2d5e;\n}\n\n.a-enter-vr-button.resethover {\n  background-color: rgba(0, 0, 0, 0.35);\n}\n\n\n.a-enter-vr-modal {\n  background-color: #666;\n  border-radius: 0;\n  display: none;\n  min-height: 32px;\n  margin-right: 70px;\n  padding: 9px;\n  width: 280px;\n  right: 2%;\n  position: absolute;\n}\n\n.a-enter-vr-modal:after {\n  border-bottom: 10px solid transparent;\n  border-left: 10px solid #666;\n  border-top: 10px solid transparent;\n  display: inline-block;\n  content: '';\n  position: absolute;\n  right: -5px;\n  top: 5px;\n  width: 0;\n  height: 0;\n}\n\n.a-enter-vr-modal p,\n.a-enter-vr-modal a {\n  display: inline;\n}\n\n.a-enter-vr-modal p {\n  margin: 0;\n}\n\n.a-enter-vr-modal p:after {\n  content: ' ';\n}\n\n.a-orientation-modal {\n  background: rgba(244, 244, 244, 1) url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%2090%2090%22%20enable-background%3D%22new%200%200%2090%2090%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpolygon%20points%3D%220%2C0%200%2C0%200%2C0%20%22%3E%3C/polygon%3E%3Cg%3E%3Cpath%20d%3D%22M71.545%2C48.145h-31.98V20.743c0-2.627-2.138-4.765-4.765-4.765H18.456c-2.628%2C0-4.767%2C2.138-4.767%2C4.765v42.789%20%20%20c0%2C2.628%2C2.138%2C4.766%2C4.767%2C4.766h5.535v0.959c0%2C2.628%2C2.138%2C4.765%2C4.766%2C4.765h42.788c2.628%2C0%2C4.766-2.137%2C4.766-4.765V52.914%20%20%20C76.311%2C50.284%2C74.173%2C48.145%2C71.545%2C48.145z%20M18.455%2C16.935h16.344c2.1%2C0%2C3.808%2C1.708%2C3.808%2C3.808v27.401H37.25V22.636%20%20%20c0-0.264-0.215-0.478-0.479-0.478H16.482c-0.264%2C0-0.479%2C0.214-0.479%2C0.478v36.585c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h7.507v7.644%20%20%20h-5.534c-2.101%2C0-3.81-1.709-3.81-3.81V20.743C14.645%2C18.643%2C16.354%2C16.935%2C18.455%2C16.935z%20M16.96%2C23.116h19.331v25.031h-7.535%20%20%20c-2.628%2C0-4.766%2C2.139-4.766%2C4.768v5.828h-7.03V23.116z%20M71.545%2C73.064H28.757c-2.101%2C0-3.81-1.708-3.81-3.808V52.914%20%20%20c0-2.102%2C1.709-3.812%2C3.81-3.812h42.788c2.1%2C0%2C3.809%2C1.71%2C3.809%2C3.812v16.343C75.354%2C71.356%2C73.645%2C73.064%2C71.545%2C73.064z%22%3E%3C/path%3E%3Cpath%20d%3D%22M28.919%2C58.424c-1.466%2C0-2.659%2C1.193-2.659%2C2.66c0%2C1.466%2C1.193%2C2.658%2C2.659%2C2.658c1.468%2C0%2C2.662-1.192%2C2.662-2.658%20%20%20C31.581%2C59.617%2C30.387%2C58.424%2C28.919%2C58.424z%20M28.919%2C62.786c-0.939%2C0-1.703-0.764-1.703-1.702c0-0.939%2C0.764-1.704%2C1.703-1.704%20%20%20c0.94%2C0%2C1.705%2C0.765%2C1.705%2C1.704C30.623%2C62.022%2C29.858%2C62.786%2C28.919%2C62.786z%22%3E%3C/path%3E%3Cpath%20d%3D%22M69.654%2C50.461H33.069c-0.264%2C0-0.479%2C0.215-0.479%2C0.479v20.288c0%2C0.264%2C0.215%2C0.478%2C0.479%2C0.478h36.585%20%20%20c0.263%2C0%2C0.477-0.214%2C0.477-0.478V50.939C70.131%2C50.676%2C69.917%2C50.461%2C69.654%2C50.461z%20M69.174%2C51.417V70.75H33.548V51.417H69.174z%22%3E%3C/path%3E%3Cpath%20d%3D%22M45.201%2C30.296c6.651%2C0%2C12.233%2C5.351%2C12.551%2C11.977l-3.033-2.638c-0.193-0.165-0.507-0.142-0.675%2C0.048%20%20%20c-0.174%2C0.198-0.153%2C0.501%2C0.045%2C0.676l3.883%2C3.375c0.09%2C0.075%2C0.198%2C0.115%2C0.312%2C0.115c0.141%2C0%2C0.273-0.061%2C0.362-0.166%20%20%20l3.371-3.877c0.173-0.2%2C0.151-0.502-0.047-0.675c-0.194-0.166-0.508-0.144-0.676%2C0.048l-2.592%2C2.979%20%20%20c-0.18-3.417-1.629-6.605-4.099-9.001c-2.538-2.461-5.877-3.817-9.404-3.817c-0.264%2C0-0.479%2C0.215-0.479%2C0.479%20%20%20C44.72%2C30.083%2C44.936%2C30.296%2C45.201%2C30.296z%22%3E%3C/path%3E%3C/g%3E%3C/svg%3E) center no-repeat;\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-orientation-modal:after {\n  color: #666;\n  content: \"Insert phone into Cardboard holder.\";\n  display: block;\n  position: absolute;\n  text-align: center;\n  top: 70%;\n  transform: translateY(-70%);\n  width: 100%;\n}\n\n.a-orientation-modal button {\n  background: url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20version%3D%221.1%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20100%20100%22%20enable-background%3D%22new%200%200%20100%20100%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M55.209%2C50l17.803-17.803c1.416-1.416%2C1.416-3.713%2C0-5.129c-1.416-1.417-3.713-1.417-5.129%2C0L50.08%2C44.872%20%20L32.278%2C27.069c-1.416-1.417-3.714-1.417-5.129%2C0c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129L44.951%2C50L27.149%2C67.803%20%20c-1.417%2C1.416-1.417%2C3.713%2C0%2C5.129c0.708%2C0.708%2C1.636%2C1.062%2C2.564%2C1.062c0.928%2C0%2C1.856-0.354%2C2.564-1.062L50.08%2C55.13l17.803%2C17.802%20%20c0.708%2C0.708%2C1.637%2C1.062%2C2.564%2C1.062s1.856-0.354%2C2.564-1.062c1.416-1.416%2C1.416-3.713%2C0-5.129L55.209%2C50z%22%3E%3C/path%3E%3C/svg%3E) no-repeat;\n  border: none;\n  height: 50px;\n  text-indent: -9999px;\n  width: 50px;\n}\n\n.a-loader-title {\n  background-color: rgba(0, 0, 0, 0.6);\n  font-family: sans-serif, monospace;\n  text-align: center;\n  font-size: 20px;\n  height: 50px;\n  font-weight: 300;\n  line-height: 50px;\n  position: absolute;\n  right: 0px;\n  left: 0px;\n  top: 0px;\n  color: white;\n}\n\n.a-modal {\n  position: absolute;\n  background: rgba(0, 0, 0, 0.60);\n  background-size: 50% 50%;\n  bottom: 0;\n  font-size: 14px;\n  font-weight: 600;\n  left: 0;\n  line-height: 20px;\n  right: 0;\n  position: fixed;\n  top: 0;\n  z-index: 9999999;\n}\n\n.a-dialog {\n  position: relative;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 199995;\n  width: 300px;\n  height: 200px;\n  background-size: contain;\n  background-color: white;\n  font-family: sans-serif, monospace;\n  font-size: 20px;\n  border-radius: 3px;\n  padding: 6px;\n}\n\n.a-dialog-text-container {\n  width: 100%;\n  height: 70%;\n  align-self: flex-start;\n  display: flex;\n  justify-content: center;\n  align-content: center;\n  flex-direction: column;\n}\n\n.a-dialog-text {\n  display: inline-block;\n  font-weight: normal;\n  font-size: 14pt;\n  margin: 8px;\n}\n\n.a-dialog-buttons-container {\n  display: inline-flex;\n  align-self: flex-end;\n  width: 100%;\n  height: 30%;\n}\n\n.a-dialog-button {\n  cursor: pointer;\n  align-self: center;\n  opacity: 0.9;\n  height: 80%;\n  width: 50%;\n  font-size: 12pt;\n  margin: 4px;\n  border-radius: 2px;\n  text-align:center;\n  border: none;\n  display: inline-block;\n  -webkit-transition: all 0.25s ease-in-out;\n  transition: all 0.25s ease-in-out;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.20);\n  user-select: none;\n}\n\n.a-dialog-permission-button:hover {\n  box-shadow: 0 7px 14px rgba(0,0,0,0.20), 0 2px 2px rgba(0,0,0,0.20);\n}\n\n.a-dialog-allow-button {\n  background-color: #00ceff;\n}\n\n.a-dialog-deny-button {\n  background-color: #ff005b;\n}\n\n.a-dialog-ok-button {\n  background-color: #00ceff;\n  width: 100%;\n}\n\n.a-dom-overlay:not(.a-no-style) {\n  overflow: hidden;\n  position: absolute;\n  pointer-events: none;\n  box-sizing: border-box;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  top: 0;\n  padding: 1em;\n}\n\n.a-dom-overlay:not(.a-no-style)>* {\n  pointer-events: auto;\n}\n"],"sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -41404,6 +41449,17 @@ function styleTagTransform(css, styleElement) {
 }
 
 module.exports = styleTagTransform;
+
+/***/ }),
+
+/***/ "data:image/svg+xml,%3C%3Fxml version=%271.0%27 encoding=%27UTF-8%27 standalone=%27no%27%3F%3E%3Csvg width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27 version=%271.1%27 id=%27svg320%27 sodipodi:docname=%27fullscreen-aframe.svg%27 xml:space=%27preserve%27 inkscape:version=%271.2.1 %289c6d41e  2022-07-14%29%27 xmlns:inkscape=%27http://www.inkscape.org/namespaces/inkscape%27 xmlns:sodipodi=%27http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd%27 xmlns=%27http://www.w3.org/2000/svg%27 xmlns:svg=%27http://www.w3.org/2000/svg%27 xmlns:rdf=%27http://www.w3.org/1999/02/22-rdf-syntax-ns%23%27 xmlns:cc=%27http://creativecommons.org/ns%23%27 xmlns:dc=%27http://purl.org/dc/elements/1.1/%27%3E%3Cdefs id=%27defs324%27 /%3E%3Csodipodi:namedview id=%27namedview322%27 pagecolor=%27%23ffffff%27 bordercolor=%27%23000000%27 borderopacity=%270.25%27 inkscape:showpageshadow=%272%27 inkscape:pageopacity=%270.0%27 inkscape:pagecheckerboard=%270%27 inkscape:deskcolor=%27%23d1d1d1%27 showgrid=%27false%27 inkscape:zoom=%273.8064516%27 inkscape:cx=%2791.423729%27 inkscape:cy=%27-1.4449153%27 inkscape:window-width=%271440%27 inkscape:window-height=%27847%27 inkscape:window-x=%2732%27 inkscape:window-y=%2725%27 inkscape:window-maximized=%270%27 inkscape:current-layer=%27svg320%27 /%3E%3Ctitle id=%27title312%27%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z%27 fill=%27%23fff%27 id=%27path314%27 style=%27fill:%23ffffff%27 /%3E%3Cg id=%27g356%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g358%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g360%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g362%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g364%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g366%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g368%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g370%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g372%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g374%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g376%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g378%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g380%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g382%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g384%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cmetadata id=%27metadata561%27%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=%27%27%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d=%27m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4%27 id=%27path596%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4%27 id=%27path598%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4%27 id=%27path600%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616%27 id=%27path602%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3C/svg%3E":
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** data:image/svg+xml,%3C%3Fxml version=%271.0%27 encoding=%27UTF-8%27 standalone=%27no%27%3F%3E%3Csvg width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27 version=%271.1%27 id=%27svg320%27 sodipodi:docname=%27fullscreen-aframe.svg%27 xml:space=%27preserve%27 inkscape:version=%271.2.1 %289c6d41e  2022-07-14%29%27 xmlns:inkscape=%27http://www.inkscape.org/namespaces/inkscape%27 xmlns:sodipodi=%27http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd%27 xmlns=%27http://www.w3.org/2000/svg%27 xmlns:svg=%27http://www.w3.org/2000/svg%27 xmlns:rdf=%27http://www.w3.org/1999/02/22-rdf-syntax-ns%23%27 xmlns:cc=%27http://creativecommons.org/ns%23%27 xmlns:dc=%27http://purl.org/dc/elements/1.1/%27%3E%3Cdefs id=%27defs324%27 /%3E%3Csodipodi:namedview id=%27namedview322%27 pagecolor=%27%23ffffff%27 bordercolor=%27%23000000%27 borderopacity=%270.25%27 inkscape:showpageshadow=%272%27 inkscape:pageopacity=%270.0%27 inkscape:pagecheckerboard=%270%27 inkscape:deskcolor=%27%23d1d1d1%27 showgrid=%27false%27 inkscape:zoom=%273.8064516%27 inkscape:cx=%2791.423729%27 inkscape:cy=%27-1.4449153%27 inkscape:window-width=%271440%27 inkscape:window-height=%27847%27 inkscape:window-x=%2732%27 inkscape:window-y=%2725%27 inkscape:window-maximized=%270%27 inkscape:current-layer=%27svg320%27 /%3E%3Ctitle id=%27title312%27%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z%27 fill=%27%23fff%27 id=%27path314%27 style=%27fill:%23ffffff%27 /%3E%3Cg id=%27g356%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g358%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g360%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g362%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g364%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g366%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g368%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g370%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g372%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g374%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g376%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g378%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g380%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g382%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g384%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cmetadata id=%27metadata561%27%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=%27%27%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d=%27m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4%27 id=%27path596%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4%27 id=%27path598%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4%27 id=%27path600%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616%27 id=%27path602%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3C/svg%3E ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = "data:image/svg+xml,%3C%3Fxml version=%271.0%27 encoding=%27UTF-8%27 standalone=%27no%27%3F%3E%3Csvg width=%27108%27 height=%2762%27 viewBox=%270 0 108 62%27 version=%271.1%27 id=%27svg320%27 sodipodi:docname=%27fullscreen-aframe.svg%27 xml:space=%27preserve%27 inkscape:version=%271.2.1 %289c6d41e  2022-07-14%29%27 xmlns:inkscape=%27http://www.inkscape.org/namespaces/inkscape%27 xmlns:sodipodi=%27http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd%27 xmlns=%27http://www.w3.org/2000/svg%27 xmlns:svg=%27http://www.w3.org/2000/svg%27 xmlns:rdf=%27http://www.w3.org/1999/02/22-rdf-syntax-ns%23%27 xmlns:cc=%27http://creativecommons.org/ns%23%27 xmlns:dc=%27http://purl.org/dc/elements/1.1/%27%3E%3Cdefs id=%27defs324%27 /%3E%3Csodipodi:namedview id=%27namedview322%27 pagecolor=%27%23ffffff%27 bordercolor=%27%23000000%27 borderopacity=%270.25%27 inkscape:showpageshadow=%272%27 inkscape:pageopacity=%270.0%27 inkscape:pagecheckerboard=%270%27 inkscape:deskcolor=%27%23d1d1d1%27 showgrid=%27false%27 inkscape:zoom=%273.8064516%27 inkscape:cx=%2791.423729%27 inkscape:cy=%27-1.4449153%27 inkscape:window-width=%271440%27 inkscape:window-height=%27847%27 inkscape:window-x=%2732%27 inkscape:window-y=%2725%27 inkscape:window-maximized=%270%27 inkscape:current-layer=%27svg320%27 /%3E%3Ctitle id=%27title312%27%3Eaframe-armode-noborder-reduced-tracking%3C/title%3E%3Cpath d=%27M96 0H12A12 12 0 0 0 0 12V50A12 12 0 0 0 12 62H96a12 12 0 0 0 12-12V12A12 12 0 0 0 96 0Zm8 50a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8H96a8 8 0 0 1 8 8Z%27 fill=%27%23fff%27 id=%27path314%27 style=%27fill:%23ffffff%27 /%3E%3Cg id=%27g356%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g358%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g360%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g362%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g364%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g366%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g368%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g370%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g372%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g374%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g376%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g378%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g380%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g382%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cg id=%27g384%27 transform=%27translate%28-206.61017 -232.61864%29%27%3E%3C/g%3E%3Cmetadata id=%27metadata561%27%3E%3Crdf:RDF%3E%3Ccc:Work rdf:about=%27%27%3E%3Cdc:title%3Eaframe-armode-noborder-reduced-tracking%3C/dc:title%3E%3C/cc:Work%3E%3C/rdf:RDF%3E%3C/metadata%3E%3Cpath d=%27m 98.168511 40.083649 c 0 -1.303681 -0.998788 -2.358041 -2.239389 -2.358041 -1.230088 0.0031 -2.240892 1.05436 -2.240892 2.358041 v 4.881296 l -9.041661 -9.041662 c -0.874129 -0.875631 -2.288954 -0.875631 -3.16308 0 -0.874129 0.874126 -0.874129 2.293459 0 3.167585 l 8.995101 8.992101 h -4.858767 c -1.323206 0.0031 -2.389583 1.004796 -2.389583 2.239386 0 1.237598 1.066377 2.237888 2.389583 2.237888 h 10.154599 c 1.323206 0 2.388082 -0.998789 2.392587 -2.237888 -0.0044 -0.03305 -0.009 -0.05858 -0.0134 -0.09161 0.0046 -0.04207 0.0134 -0.08712 0.0134 -0.13066 V 40.085172 h -1.52e-4%27 id=%27path596%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 23.091002 35.921781 -9.026643 9.041662 v -4.881296 c 0 -1.303681 -1.009302 -2.355037 -2.242393 -2.358041 -1.237598 0 -2.237888 1.05436 -2.237888 2.358041 l -0.0031 10.016421 c 0 0.04356 0.01211 0.08862 0.0015 0.130659 -0.0031 0.03153 -0.009 0.05709 -0.01211 0.09161 0.0031 1.239099 1.069379 2.237888 2.391085 2.237888 h 10.156101 c 1.320202 0 2.388079 -1.000291 2.388079 -2.237888 0 -1.234591 -1.067877 -2.236383 -2.388079 -2.239387 h -4.858767 l 8.995101 -8.9921 c 0.871126 -0.874127 0.871126 -2.293459 0 -3.167586 -0.875628 -0.877132 -2.291957 -0.877132 -3.169087 -1.52e-4%27 id=%27path598%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 84.649572 25.978033 9.041662 -9.041664 v 4.881298 c 0 1.299176 1.010806 2.350532 2.240891 2.355037 1.240601 0 2.23939 -1.055861 2.23939 -2.355037 V 11.798242 c 0 -0.04356 -0.009 -0.08862 -0.0134 -0.127671 0.0044 -0.03153 0.009 -0.06157 0.0134 -0.09313 -0.0044 -1.240598 -1.069379 -2.2393873 -2.391085 -2.2393873 h -10.1546 c -1.323205 0 -2.38958 0.9987893 -2.38958 2.2393873 0 1.233091 1.066375 2.237887 2.38958 2.240891 h 4.858768 l -8.995102 8.9921 c -0.874129 0.872625 -0.874129 2.288954 0 3.161578 0.874127 0.880137 2.288951 0.880137 3.16308 1.5e-4%27 id=%27path600%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3Cpath d=%27m 17.264988 13.822853 h 4.857265 c 1.320202 -0.0031 2.388079 -1.0078 2.388079 -2.240889 0 -1.240601 -1.067877 -2.2393893 -2.388079 -2.2393893 H 11.967654 c -1.321707 0 -2.388082 0.9987883 -2.391085 2.2393893 0.0031 0.03153 0.009 0.06157 0.01211 0.09313 -0.0031 0.03905 -0.0015 0.08262 -0.0015 0.127671 l 0.0031 10.020926 c 0 1.299176 1.00029 2.355038 2.237887 2.355038 1.233092 -0.0044 2.242393 -1.055862 2.242393 -2.355038 v -4.881295 l 9.026644 9.041661 c 0.877132 0.878635 2.293459 0.878635 3.169087 0 0.871125 -0.872624 0.871125 -2.288953 0 -3.161577 l -8.995282 -8.993616%27 id=%27path602%27 style=%27fill:%23ffffff%3Bstroke-width:1.50194%27 /%3E%3C/svg%3E";
 
 /***/ }),
 
@@ -51658,7 +51714,7 @@ class WorkerPool {
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"aframe","version":"1.3.0","description":"A web framework for building virtual reality experiences.","homepage":"https://aframe.io/","main":"dist/aframe-master.js","scripts":{"dev":"cross-env INSPECTOR_VERSION=dev webpack serve","dist":"node scripts/updateVersionLog.js && npm run dist:min && npm run dist:max","dist:max":"webpack --config webpack.config.js","dist:min":"webpack --config webpack.prod.config.js","docs":"markserv --dir docs --port 9001","preghpages":"node ./scripts/preghpages.js","ghpages":"ghpages -p gh-pages/","lint":"semistandard -v | snazzy","lint:fix":"semistandard --fix","precommit":"npm run lint","prepush":"node scripts/testOnlyCheck.js","prerelease":"node scripts/release.js 1.2.0 1.3.0","start":"npm run dev","start:https":"npm run dev -- --server-type https","test":"karma start ./tests/karma.conf.js","test:docs":"node scripts/docsLint.js","test:firefox":"npm test -- --browsers Firefox","test:chrome":"npm test -- --browsers Chrome","test:nobrowser":"NO_BROWSER=true npm test","test:node":"mocha --ui tdd tests/node"},"repository":"aframevr/aframe","license":"MIT","files":["dist/*","docs/**/*","src/**/*","vendor/**/*"],"dependencies":{"buffer":"^6.0.3","custom-event-polyfill":"^1.0.6","debug":"ngokevin/debug#noTimestamp","deep-assign":"^2.0.0","document-register-element":"dmarcos/document-register-element#8ccc532b7f3744be954574caf3072a5fd260ca90","load-bmfont":"^1.2.3","object-assign":"^4.0.1","present":"0.0.6","promise-polyfill":"^3.1.0","super-animejs":"^3.1.0","super-three":"^0.144.0","three-bmfont-text":"dmarcos/three-bmfont-text#21d017046216e318362c48abd1a48bddfb6e0733","webvr-polyfill":"^0.10.12"},"devDependencies":{"@babel/core":"^7.17.10","babel-loader":"^8.2.5","babel-plugin-istanbul":"^6.1.1","chai":"^4.3.6","chai-shallow-deep-equal":"^1.4.0","chalk":"^1.1.3","cross-env":"^7.0.3","css-loader":"^6.7.1","ghpages":"0.0.8","git-rev":"^0.2.1","glob":"^8.0.3","husky":"^0.11.7","jsdom":"^20.0.0","karma":"^6.4.0","karma-chai-shallow-deep-equal":"0.0.4","karma-chrome-launcher":"^3.1.1","karma-coverage":"^2.2.0","karma-env-preprocessor":"^0.1.1","karma-firefox-launcher":"^2.1.2","karma-mocha":"^2.0.1","karma-mocha-reporter":"^2.2.5","karma-sinon-chai":"^2.0.2","karma-webpack":"^5.0.0","markserv":"github:sukima/markserv#feature/fix-broken-websoketio-link","mocha":"^10.0.0","replace-in-file":"^2.5.3","semistandard":"^9.0.0","shelljs":"^0.7.7","shx":"^0.2.2","sinon":"<12.0.0","sinon-chai":"^3.7.0","snazzy":"^5.0.0","style-loader":"^3.3.1","too-wordy":"ngokevin/too-wordy","webpack":"^5.73.0","webpack-cli":"^4.10.0","webpack-dev-server":"^4.11.0","webpack-merge":"^5.8.0","write-good":"^1.0.8"},"link":true,"semistandard":{"ignore":["build/**","dist/**","examples/**/shaders/*.js","**/vendor/**"]},"keywords":["3d","aframe","cardboard","components","oculus","three","three.js","rift","vive","vr","web-components","webvr"],"engines":{"node":">= 4.6.0","npm":">= 2.15.9"}}');
+module.exports = JSON.parse('{"name":"aframe","version":"1.4.0","description":"A web framework for building virtual reality experiences.","homepage":"https://aframe.io/","main":"dist/aframe-master.js","scripts":{"dev":"cross-env INSPECTOR_VERSION=dev webpack serve --port 8080","dist":"node scripts/updateVersionLog.js && npm run dist:min && npm run dist:max","dist:max":"webpack --config webpack.config.js","dist:min":"webpack --config webpack.prod.config.js","docs":"markserv --dir docs --port 9001","preghpages":"node ./scripts/preghpages.js","ghpages":"ghpages -p gh-pages/","lint":"semistandard -v | snazzy","lint:fix":"semistandard --fix","precommit":"npm run lint","prepush":"node scripts/testOnlyCheck.js","prerelease":"node scripts/release.js 1.3.0 1.4.0","start":"npm run dev","start:https":"npm run dev -- --server-type https","test":"karma start ./tests/karma.conf.js","test:docs":"node scripts/docsLint.js","test:firefox":"npm test -- --browsers Firefox","test:chrome":"npm test -- --browsers Chrome","test:nobrowser":"NO_BROWSER=true npm test","test:node":"mocha --ui tdd tests/node"},"repository":"aframevr/aframe","license":"MIT","files":["dist/*","docs/**/*","src/**/*","vendor/**/*"],"dependencies":{"buffer":"^6.0.3","custom-event-polyfill":"^1.0.6","debug":"ngokevin/debug#noTimestamp","deep-assign":"^2.0.0","document-register-element":"dmarcos/document-register-element#8ccc532b7f3744be954574caf3072a5fd260ca90","load-bmfont":"^1.2.3","object-assign":"^4.0.1","present":"0.0.6","promise-polyfill":"^3.1.0","super-animejs":"^3.1.0","super-three":"^0.147.0","three-bmfont-text":"dmarcos/three-bmfont-text#21d017046216e318362c48abd1a48bddfb6e0733","webvr-polyfill":"^0.10.12"},"devDependencies":{"@babel/core":"^7.17.10","babel-loader":"^8.2.5","babel-plugin-istanbul":"^6.1.1","chai":"^4.3.6","chai-shallow-deep-equal":"^1.4.0","chalk":"^1.1.3","cross-env":"^7.0.3","css-loader":"^6.7.1","ghpages":"0.0.8","git-rev":"^0.2.1","glob":"^8.0.3","husky":"^0.11.7","jsdom":"^20.0.0","karma":"^6.4.0","karma-chai-shallow-deep-equal":"0.0.4","karma-chrome-launcher":"^3.1.1","karma-coverage":"^2.2.0","karma-env-preprocessor":"^0.1.1","karma-firefox-launcher":"^2.1.2","karma-mocha":"^2.0.1","karma-mocha-reporter":"^2.2.5","karma-sinon-chai":"^2.0.2","karma-webpack":"^5.0.0","markserv":"github:sukima/markserv#feature/fix-broken-websoketio-link","mocha":"^10.0.0","replace-in-file":"^2.5.3","semistandard":"^9.0.0","shelljs":"^0.7.7","shx":"^0.2.2","sinon":"<12.0.0","sinon-chai":"^3.7.0","snazzy":"^5.0.0","style-loader":"^3.3.1","too-wordy":"ngokevin/too-wordy","webpack":"^5.73.0","webpack-cli":"^4.10.0","webpack-dev-server":"^4.11.0","webpack-merge":"^5.8.0","write-good":"^1.0.8"},"link":true,"semistandard":{"ignore":["build/**","dist/**","examples/**/shaders/*.js","**/vendor/**"]},"keywords":["3d","aframe","cardboard","components","oculus","three","three.js","rift","vive","vr","web-components","webvr"],"engines":{"node":">= 4.6.0","npm":">= 2.15.9"}}');
 
 /***/ })
 
